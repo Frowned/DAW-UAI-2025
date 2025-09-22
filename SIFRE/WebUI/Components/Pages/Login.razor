@@ -59,6 +59,24 @@
             SingletonSession.Instancia.Login(user);
             SingletonSession.Instancia.currentLanguage = LanguageBLL.GetById(user.LanguageId, true)!;
 
+            // Verificar expiración de contraseña
+            if (UserBLL.IsPasswordExpired(user))
+            {
+                // Log intento de login con contraseña vencida
+                LogBLL.Save(new BE.Entities.Log
+                {
+                    Message = "Login attempt with expired password",
+                    CreatedAt = DateTime.Now,
+                    CreatedBy = UsersMapper.DtoToUser(user),
+                    Type = BE.Entities.LogType.Warning,
+                    Module = nameof(Login)
+                });
+
+                // No completar el login, redirigir a cambio de contraseña
+                Navigation.NavigateTo($"/change-password?username={user.Username}", true);
+                return;
+            }
+
             // Verificar inconsistencias
             string messageError = string.Empty;
             var tables = new List<string> { "Products", "Transactions", "PointTransfers" };

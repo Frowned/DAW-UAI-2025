@@ -98,10 +98,21 @@ namespace DAL
             new SqlParameter("@Username", user.Username)
             };
             dbHelper.ExecuteNonQuery(query, CommandType.Text, parameters);
-            if (user.Id == SingletonSession.Instancia.User.Id) { 
+            if (user.Id == SingletonSession.Instancia.User.Id) {
                 roleDAL.FillRoleComponent(role);
                 SingletonSession.Instancia.User.UserRole = role;
             }
+        }
+
+        public void UpdatePassword(string username, string newEncryptedPassword)
+        {
+            string query = "UPDATE Users SET Password = @Password, PasswordLastUpdatedAt = GETDATE() WHERE Username = @Username";
+            SqlParameter[] parameters = new SqlParameter[]
+            {
+            new SqlParameter("@Password", newEncryptedPassword),
+            new SqlParameter("@Username", username)
+            };
+            dbHelper.ExecuteNonQuery(query, CommandType.Text, parameters);
         }
     }
 }

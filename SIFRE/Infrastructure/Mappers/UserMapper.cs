@@ -26,7 +26,7 @@ namespace Infrastructure.Mappers
                 return null;
 
             return new UserDTO
-            { 
+            {
                 Id = Guid.Parse(row["Id"].ToString()),
                 Username = row["Username"].ToString(),
                 IsBlocked = Convert.ToBoolean(row["IsBlocked"]),
@@ -35,7 +35,8 @@ namespace Infrastructure.Mappers
                 LastName = row["LastName"].ToString(),
                 LanguageId = int.Parse(row["LanguageId"].ToString()),
                 RoleId = int.Parse(row["RoleId"].ToString()),
-                Points = long.Parse(row["Points"].ToString())
+                Points = long.Parse(row["Points"].ToString()),
+                PasswordLastUpdatedAt = Convert.ToDateTime(row["PasswordLastUpdatedAt"])
             };
         }
     }

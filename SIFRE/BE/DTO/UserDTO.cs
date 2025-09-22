@@ -19,6 +19,7 @@ namespace BE.DTO
         public int LanguageId { get; set; }
         public int RoleId { get; set; }
         public long Points { get; set; }
+        public DateTime PasswordLastUpdatedAt { get; set; }
         public Role UserRole { get; set; }
     }
 }
