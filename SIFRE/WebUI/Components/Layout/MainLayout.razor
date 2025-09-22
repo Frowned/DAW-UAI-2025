@@ -3,7 +3,7 @@
 @inject NavigationManager Navigation
 
 <div class="page">
-        @if (!IsLoginPage && IsAuthenticated)
+        @if (!IsLoginPage && !IsChangePasswordPage && IsAuthenticated)
         {
     <div class="sidebar">
             <NavMenu />
@@ -30,4 +30,6 @@
         SingletonSession.Instancia?.User != null;
     private bool IsLoginPage =>
         Navigation.Uri.Contains("/login", StringComparison.OrdinalIgnoreCase);
+    private bool IsChangePasswordPage =>
+        Navigation.Uri.Contains("/change-password", StringComparison.OrdinalIgnoreCase);
 }   
