@@ -10,5 +10,6 @@ namespace Infrastructure.Interfaces.DAL
         void UpdateUserLanguage(Guid userId, int languageId);
         List<UserDTO> GetAllUsers();
         void AssignRole(Role role, UserDTO user);
+        void AddUser(string username, string email, string firstName, string lastName, string encryptedPassword, int roleId, int languageId);
     }
 }

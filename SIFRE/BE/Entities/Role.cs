@@ -1,15 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Xml.Serialization;
 
 namespace BE.Entities
 {
+    [XmlRoot("Role")]
     public class Role : RoleComponent
     {
         private IList<RoleComponent> _components;
-        public override IList<RoleComponent> Children {
+
+        [XmlIgnore]
+        public override IList<RoleComponent> Children
+        {
             get
             {
                 return _components;

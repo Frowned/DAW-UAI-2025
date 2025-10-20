@@ -1,0 +1,256 @@
+@page "/crear-usuario"
+@rendermode InteractiveServer
+@using BE.Enums
+@using Infrastructure.Helpers
+@using WebUI.Security
+@attribute [RequirePermissions(PermissionsType.GESTIONAR_EMPLEADOS)]
+@inject IUserBLL UserBLL
+@inject IRoleBLL RoleBLL
+@inject ILanguageBLL LanguageBLL
+@inject NavigationManager Navigation
+@inject ILogger<CreateUser> Logger
+
+<RoleGuard RequiredPermissions="@(new[] { PermissionsType.GESTIONAR_EMPLEADOS })">
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="mb-0">
+                            <i class="bi bi-person-plus-fill"></i> Crear Nuevo Usuario
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill"></i> @errorMessage
+                                <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="bi bi-check-circle-fill"></i> @successMessage
+                                <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
+                            </div>
+                        }
+
+                        <EditForm Model="@newUser" OnValidSubmit="HandleCreateUser">
+                            <DataAnnotationsValidator />
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="username" class="form-label">Usuario <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="username" @bind="newUser.Username" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="email" @bind="newUser.Email" required />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="firstName" class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="firstName" @bind="newUser.FirstName" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="lastName" class="form-label">Apellido <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="lastName" @bind="newUser.LastName" required />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="password" class="form-label">Contraseña <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="password" @bind="newUser.Password" required />
+                                    <small class="form-text text-muted">
+                                        @PasswordValidationHelper.GetPasswordRequirements()
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="confirmPassword" class="form-label">Confirmar Contraseña <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="confirmPassword" @bind="confirmPassword" required />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="role" class="form-label">Rol <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="role" @bind="newUser.RoleId" required>
+                                        <option value="0">Seleccionar rol...</option>
+                                        @foreach (var role in roles)
+                                        {
+                                            <option value="@role.Id">@role.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="language" class="form-label">Idioma <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="language" @bind="newUser.LanguageId" required>
+                                        <option value="0">Seleccionar idioma...</option>
+                                        @foreach (var language in languages)
+                                        {
+                                            <option value="@language.Id">@language.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                                    <i class="bi bi-x-circle"></i> Cancelar
+                                </button>
+                                <button type="submit" class="btn btn-success" disabled="@isCreating">
+                                    @if (isCreating)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Creando...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-circle"></i>
+                                        <span>Crear Usuario</span>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</RoleGuard>
+
+@code {
+    private UserModel newUser = new UserModel();
+    private string confirmPassword = string.Empty;
+    private IList<BE.Entities.Role> roles = new List<BE.Entities.Role>();
+    private List<BE.DTO.LanguageDTO> languages = new();
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private bool isCreating = false;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            roles = RoleBLL.GetRoles();
+            languages = LanguageBLL.GetAllLanguages();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al cargar roles e idiomas");
+            errorMessage = "Error al cargar los datos necesarios.";
+        }
+    }
+
+    private async Task HandleCreateUser()
+    {
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            // Validaciones
+            if (string.IsNullOrWhiteSpace(newUser.Username))
+            {
+                errorMessage = "El nombre de usuario es obligatorio.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newUser.Email))
+            {
+                errorMessage = "El email es obligatorio.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newUser.FirstName))
+            {
+                errorMessage = "El nombre es obligatorio.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newUser.LastName))
+            {
+                errorMessage = "El apellido es obligatorio.";
+                return;
+            }
+
+            if (newUser.Password != confirmPassword)
+            {
+                errorMessage = "Las contraseñas no coinciden.";
+                return;
+            }
+
+            if (newUser.RoleId == 0)
+            {
+                errorMessage = "Debe seleccionar un rol.";
+                return;
+            }
+
+            if (newUser.LanguageId == 0)
+            {
+                errorMessage = "Debe seleccionar un idioma.";
+                return;
+            }
+
+            isCreating = true;
+
+            // Crear usuario
+            UserBLL.AddUser(
+                newUser.Username,
+                newUser.Email,
+                newUser.FirstName,
+                newUser.LastName,
+                newUser.Password,
+                newUser.RoleId,
+                newUser.LanguageId
+            );
+
+            Logger.LogInformation("Usuario creado exitosamente: {Username}", newUser.Username);
+            successMessage = $"Usuario '{newUser.Username}' creado exitosamente.";
+
+            // Limpiar formulario
+            newUser = new UserModel();
+            confirmPassword = string.Empty;
+
+            // Redirigir después de 2 segundos
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/");
+        }
+        catch (ArgumentException ex)
+        {
+            errorMessage = ex.Message;
+            Logger.LogWarning("Error de validación al crear usuario: {Message}", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error al crear el usuario. Verifique que el nombre de usuario o email no estén duplicados.";
+            Logger.LogError(ex, "Error al crear usuario");
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private class UserModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public int RoleId { get; set; }
+        public int LanguageId { get; set; }
+    }
+}
+

@@ -97,7 +97,8 @@
 
         @if (HasAnyPermission(new[] {
             PermissionsType.GESTIONAR_PRODUCTOS,
-            PermissionsType.GESTIONAR_BACKUP
+            PermissionsType.GESTIONAR_BACKUP,
+            PermissionsType.GESTIONAR_EMPLEADOS
         }))
         {
             <div class="nav-item px-3">
@@ -108,12 +109,12 @@
                     </span>
                 </button>
                 <div class="nav-submenu @(menuStates[3] ? "show" : "")">
-                    @*<NavLink class="nav-link submenu-item" href="gestionar-perfiles">
-                        👥 Gestionar perfiles
-                    </NavLink>
-                    <NavLink class="nav-link submenu-item" href="gestionar-idioma">
-                        🌐 Gestionar idioma
-                    </NavLink>*@
+                    @if (HasPermission(PermissionsType.GESTIONAR_EMPLEADOS))
+                    {
+                        <NavLink class="nav-link submenu-item" href="crear-usuario">
+                            👤 Crear usuario
+                        </NavLink>
+                    }
                     @if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
                     {
                         <NavLink class="nav-link submenu-item" href="gestionar-productos">
@@ -124,6 +125,12 @@
                     {
                         <NavLink class="nav-link submenu-item" href="gestionar-backup">
                             💾 Gestionar Backup
+                        </NavLink>
+                    }
+                    @if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
+                    {
+                        <NavLink class="nav-link submenu-item" href="serializar">
+                            🔄 Importar/Exportar JSON/XML
                         </NavLink>
                     }
                 </div>

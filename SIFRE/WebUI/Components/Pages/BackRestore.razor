@@ -1,6 +1,10 @@
 ﻿@page "/gestionar-backup"
 @using Microsoft.AspNetCore.Components.Forms
+@using BE.Enums
+@using WebUI.Security
+@attribute [RequirePermissions(PermissionsType.GESTIONAR_BACKUP)]
 
+<RoleGuard RequiredPermissions="@(new[] { PermissionsType.GESTIONAR_BACKUP })">
 <style>
     .backup-section {
         background: #fafafa;
@@ -71,3 +75,4 @@
         </div>
     </div>
 </div>
+</RoleGuard>
