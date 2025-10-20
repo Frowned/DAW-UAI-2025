@@ -103,5 +103,24 @@ namespace DAL
                 SingletonSession.Instancia.User.UserRole = role;
             }
         }
+
+        public void AddUser(string username, string email, string firstName, string lastName, string encryptedPassword, int roleId, int languageId)
+        {
+            string query = @"INSERT INTO Users (Id, Username, Email, FirstName, LastName, Password, RoleId, LanguageId, IsBlocked, Points) 
+                           VALUES (NEWID(), @Username, @Email, @FirstName, @LastName, @Password, @RoleId, @LanguageId, 0, 0)";
+            
+            SqlParameter[] parameters = new SqlParameter[]
+            {
+                new SqlParameter("@Username", username),
+                new SqlParameter("@Email", email),
+                new SqlParameter("@FirstName", firstName),
+                new SqlParameter("@LastName", lastName),
+                new SqlParameter("@Password", encryptedPassword),
+                new SqlParameter("@RoleId", roleId),
+                new SqlParameter("@LanguageId", languageId)
+            };
+
+            dbHelper.ExecuteNonQuery(query, CommandType.Text, parameters);
+        }
     }
 }
