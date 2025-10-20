@@ -7,6 +7,7 @@ using Infrastructure.Session;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using WebUI.Components;
+using WebUI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -47,6 +48,7 @@ DatabaseHelper.Configure(builder.Configuration.GetConnectionString("DefaultConne
 
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(connectionString));
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<SerializationService>();
 
 var app = builder.Build();
 
