@@ -12,3 +12,18 @@ function descargarArchivo(nombreArchivo, contenidoBase64) {
 }
 
 window.descargarArchivo = descargarArchivo; 
+
+function downloadFile(contentType, fileName, base64Content) {
+    try {
+        const link = document.createElement('a');
+        link.href = `data:${contentType};base64,${base64Content}`;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (e) {
+        console.error('downloadFile error', e);
+    }
+}
+
+window.downloadFile = downloadFile;

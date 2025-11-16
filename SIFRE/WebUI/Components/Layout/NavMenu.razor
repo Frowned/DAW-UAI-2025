@@ -126,6 +126,12 @@
                             💾 Gestionar Backup
                         </NavLink>
                     }
+                    @if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
+                    {
+                        <NavLink class="nav-link submenu-item" href="serializar">
+                            🔄 Importar/Exportar JSON/XML
+                        </NavLink>
+                    }
                 </div>
             </div>
         }

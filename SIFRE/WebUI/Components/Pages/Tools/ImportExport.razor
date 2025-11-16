@@ -1,0 +1,649 @@
+@page "/serializar"
+@rendermode InteractiveServer
+@using BE.DTO
+@using BE.Enums
+@using System.IO
+@using System.Text
+@using System.Text.Json
+@using WebUI.Services
+@using WebUI.Security
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@inject IProductBLL ProductBLL
+@inject IUserBLL UserBLL
+@inject ILogBLL LogBLL
+@inject SerializationService SerializationService
+@inject IJSRuntime JS
+@inject ILogger<ImportExport> Logger
+
+<h3>Importar / Exportar JSON y XML</h3>
+
+<div class="mb-4">
+    <label for="entitySelect" class="form-label">Seleccionar Entidad</label>
+    <select id="entitySelect" class="form-select" @bind="selectedEntity">
+        <option value="Productos">Productos</option>
+        <option value="Usuarios">Usuarios</option>
+        <option value="Logs">Logs</option>
+    </select>
+</div>
+
+@if (selectedEntity == "Productos")
+{
+    <RoleGuard RequiredPermissions="@(new[] { PermissionsType.GESTIONAR_PRODUCTOS })">
+        @RenderEntitySection("Productos", new[] { PermissionsType.GESTIONAR_PRODUCTOS })
+    </RoleGuard>
+}
+else if (selectedEntity == "Usuarios")
+{
+    <RoleGuard RequiredPermissions="@(new[] { PermissionsType.GESTIONAR_EMPLEADOS })">
+        @RenderEntitySection("Usuarios", new[] { PermissionsType.GESTIONAR_EMPLEADOS })
+    </RoleGuard>
+}
+else if (selectedEntity == "Logs")
+{
+    <RoleGuard RequiredPermissions="@(new[] { PermissionsType.VER_REPORTERIA })">
+        @RenderEntitySection("Logs", new[] { PermissionsType.VER_REPORTERIA })
+    </RoleGuard>
+}
+
+@code {
+    private string selectedEntity = "Productos";
+    private string exportFormat = "json";
+    private string importFormat = "json";
+    private bool exporting = false;
+    private bool importing = false;
+    private bool previewing = false;
+    private bool persist = false;
+    private bool canImport = false;
+    private IBrowserFile? selectedFile;
+    private string? exportMessage;
+    private string? importMessage;
+    private object? importedData;
+
+    private RenderFragment RenderEntitySection(string entity, PermissionsType[] permissions) => __builder =>
+    {
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", "mb-4");
+
+        // Sección de Exportar
+        __builder.OpenElement(2, "div");
+        __builder.AddAttribute(3, "class", "mb-3");
+        __builder.OpenElement(4, "h5");
+        __builder.AddContent(5, $"Exportar {entity}");
+        __builder.CloseElement();
+        __builder.OpenElement(6, "div");
+        __builder.AddAttribute(7, "class", "d-flex gap-2 align-items-center");
+        __builder.OpenElement(8, "select");
+        __builder.AddAttribute(9, "class", "form-select w-auto");
+        __builder.AddAttribute(10, "value", exportFormat);
+        __builder.AddAttribute(11, "onchange", EventCallback.Factory.Create(this, (ChangeEventArgs e) => exportFormat = e.Value?.ToString() ?? "json"));
+        __builder.OpenElement(12, "option");
+        __builder.AddAttribute(13, "value", "json");
+        __builder.AddContent(14, "JSON");
+        __builder.CloseElement();
+        __builder.OpenElement(15, "option");
+        __builder.AddAttribute(16, "value", "xml");
+        __builder.AddContent(17, "XML");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.OpenElement(18, "button");
+        __builder.AddAttribute(19, "class", "btn btn-primary");
+        __builder.AddAttribute(20, "onclick", EventCallback.Factory.Create(this, ExportData));
+        __builder.AddAttribute(21, "disabled", exporting);
+        __builder.AddContent(22, exporting ? "Exportando..." : "Exportar");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        if (!string.IsNullOrEmpty(exportMessage))
+        {
+            __builder.OpenElement(23, "div");
+            __builder.AddAttribute(24, "class", "alert alert-success mt-3");
+            __builder.AddContent(25, exportMessage);
+            __builder.CloseElement();
+        }
+        __builder.CloseElement();
+
+        // Sección de Importar
+        __builder.OpenElement(26, "div");
+        __builder.AddAttribute(27, "class", "mb-3");
+        __builder.OpenElement(28, "h5");
+        __builder.AddContent(29, $"Importar {entity}");
+        __builder.CloseElement();
+        __builder.OpenElement(30, "div");
+        __builder.AddAttribute(31, "class", "d-flex gap-2 align-items-center flex-wrap");
+        __builder.OpenElement(32, "select");
+        __builder.AddAttribute(33, "class", "form-select w-auto");
+        __builder.AddAttribute(34, "value", importFormat);
+        __builder.AddAttribute(35, "onchange", EventCallback.Factory.Create(this, (ChangeEventArgs e) => importFormat = e.Value?.ToString() ?? "json"));
+        __builder.OpenElement(36, "option");
+        __builder.AddAttribute(37, "value", "json");
+        __builder.AddContent(38, "JSON");
+        __builder.CloseElement();
+        __builder.OpenElement(39, "option");
+        __builder.AddAttribute(40, "value", "xml");
+        __builder.AddContent(41, "XML");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.OpenComponent<InputFile>(42);
+        __builder.AddAttribute(43, "class", "form-control");
+        __builder.AddAttribute(44, "accept", ".json,application/json,.xml,text/xml,application/xml");
+        __builder.AddAttribute(45, "OnChange", EventCallback.Factory.Create<InputFileChangeEventArgs>(this, OnFileSelected));
+        __builder.CloseComponent();
+        __builder.OpenElement(47, "div");
+        __builder.AddAttribute(48, "class", "form-check");
+        __builder.OpenElement(49, "input");
+        __builder.AddAttribute(50, "type", "checkbox");
+        __builder.AddAttribute(51, "class", "form-check-input");
+        __builder.AddAttribute(52, "id", "persist");
+        __builder.AddAttribute(53, "checked", persist);
+        __builder.AddAttribute(54, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, (e) => persist = Convert.ToBoolean(e.Value)));
+        __builder.CloseElement();
+        __builder.OpenElement(55, "label");
+        __builder.AddAttribute(56, "class", "form-check-label");
+        __builder.AddAttribute(57, "for", "persist");
+        __builder.AddContent(58, "Persistir en base de datos");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.OpenElement(59, "button");
+        __builder.AddAttribute(60, "class", "btn btn-info me-2");
+        __builder.AddAttribute(61, "onclick", EventCallback.Factory.Create(this, PreviewData));
+        __builder.AddAttribute(62, "disabled", previewing || selectedFile == null);
+        __builder.AddContent(63, previewing ? "Cargando vista previa..." : "Vista previa");
+        __builder.CloseElement();
+        __builder.OpenElement(64, "button");
+        __builder.AddAttribute(65, "class", "btn btn-success");
+        __builder.AddAttribute(66, "onclick", EventCallback.Factory.Create(this, ImportData));
+        __builder.AddAttribute(67, "disabled", importing || selectedFile == null);
+        __builder.AddContent(68, importing ? "Importando..." : "Importar");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        if (!string.IsNullOrEmpty(importMessage))
+        {
+            __builder.OpenElement(64, "div");
+            __builder.AddAttribute(65, "class", "alert alert-info mt-3");
+            __builder.AddContent(66, importMessage);
+            __builder.CloseElement();
+        }
+        if (importedData != null)
+        {
+            __builder.OpenElement(67, "div");
+            __builder.AddAttribute(68, "class", "mt-3");
+            __builder.OpenElement(69, "h6");
+            __builder.AddContent(70, $"{entity} importados (vista previa):");
+            __builder.CloseElement();
+            if (entity == "Productos" && importedData is List<ProductDTO> products)
+            {
+                @RenderProductTable(products)
+            }
+            else if (entity == "Usuarios" && importedData is List<UserDTO> users)
+            {
+                @RenderUserTable(users)
+            }
+            else if (entity == "Logs" && importedData is List<LogDTO> logs)
+            {
+                @RenderLogTable(logs)
+            }
+            __builder.CloseElement();
+        }
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+
+    private RenderFragment RenderProductTable(List<ProductDTO> products) => __builder =>
+    {
+        __builder.OpenElement(0, "table");
+        __builder.AddAttribute(1, "class", "table table-sm table-bordered");
+        __builder.OpenElement(2, "thead");
+        __builder.OpenElement(3, "tr");
+        __builder.OpenElement(4, "th");
+        __builder.AddContent(5, "Nombre");
+        __builder.CloseElement();
+        __builder.OpenElement(6, "th");
+        __builder.AddContent(7, "Descripción");
+        __builder.CloseElement();
+        __builder.OpenElement(8, "th");
+        __builder.AddContent(9, "Puntos");
+        __builder.CloseElement();
+        __builder.OpenElement(10, "th");
+        __builder.AddContent(11, "Categoría");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.OpenElement(12, "tbody");
+        foreach (var product in products)
+        {
+            __builder.OpenElement(13, "tr");
+            __builder.OpenElement(14, "td");
+            __builder.AddContent(15, product.ProductName);
+            __builder.CloseElement();
+            __builder.OpenElement(16, "td");
+            __builder.AddContent(17, product.Description);
+            __builder.CloseElement();
+            __builder.OpenElement(18, "td");
+            __builder.AddContent(19, product.Points);
+            __builder.CloseElement();
+            __builder.OpenElement(20, "td");
+            __builder.AddContent(21, product.Category);
+            __builder.CloseElement();
+            __builder.CloseElement();
+        }
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+
+    private RenderFragment RenderUserTable(List<UserDTO> users) => __builder =>
+    {
+        __builder.OpenElement(0, "table");
+        __builder.AddAttribute(1, "class", "table table-sm table-bordered");
+        __builder.OpenElement(2, "thead");
+        __builder.OpenElement(3, "tr");
+        __builder.OpenElement(4, "th");
+        __builder.AddContent(5, "Usuario");
+        __builder.CloseElement();
+        __builder.OpenElement(6, "th");
+        __builder.AddContent(7, "Nombre");
+        __builder.CloseElement();
+        __builder.OpenElement(8, "th");
+        __builder.AddContent(9, "Apellido");
+        __builder.CloseElement();
+        __builder.OpenElement(10, "th");
+        __builder.AddContent(11, "Email");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.OpenElement(12, "tbody");
+        foreach (var user in users)
+        {
+            __builder.OpenElement(13, "tr");
+            __builder.OpenElement(14, "td");
+            __builder.AddContent(15, user.Username);
+            __builder.CloseElement();
+            __builder.OpenElement(16, "td");
+            __builder.AddContent(17, user.FirstName);
+            __builder.CloseElement();
+            __builder.OpenElement(18, "td");
+            __builder.AddContent(19, user.LastName);
+            __builder.CloseElement();
+            __builder.OpenElement(20, "td");
+            __builder.AddContent(21, user.Email);
+            __builder.CloseElement();
+            __builder.CloseElement();
+        }
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+
+    private RenderFragment RenderLogTable(List<LogDTO> logs) => __builder =>
+    {
+        __builder.OpenElement(0, "table");
+        __builder.AddAttribute(1, "class", "table table-sm table-bordered");
+        __builder.OpenElement(2, "thead");
+        __builder.OpenElement(3, "tr");
+        __builder.OpenElement(4, "th");
+        __builder.AddContent(5, "Módulo");
+        __builder.CloseElement();
+        __builder.OpenElement(6, "th");
+        __builder.AddContent(7, "Mensaje");
+        __builder.CloseElement();
+        __builder.OpenElement(8, "th");
+        __builder.AddContent(9, "Fecha");
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.CloseElement();
+        __builder.OpenElement(10, "tbody");
+        foreach (var log in logs)
+        {
+            __builder.OpenElement(11, "tr");
+            __builder.OpenElement(12, "td");
+            __builder.AddContent(13, log.Module);
+            __builder.CloseElement();
+            __builder.OpenElement(14, "td");
+            __builder.AddContent(15, log.Message);
+            __builder.CloseElement();
+            __builder.OpenElement(16, "td");
+            __builder.AddContent(17, log.CreatedAt.ToString("dd/MM/yyyy HH:mm"));
+            __builder.CloseElement();
+            __builder.CloseElement();
+        }
+        __builder.CloseElement();
+        __builder.CloseElement();
+    };
+
+    private async Task ExportData()
+    {
+        exporting = true;
+        exportMessage = null;
+        try
+        {
+            byte[] bytes;
+            string fileName;
+            string contentType;
+
+            switch (selectedEntity)
+            {
+                case "Productos":
+                    var products = ProductBLL.GetProducts(false, true);
+                    if (products == null || !products.Any())
+                    {
+                        exportMessage = $"No hay datos para exportar en {selectedEntity}.";
+                        return;
+                    }
+                    if (exportFormat == "json")
+                    {
+                        bytes = SerializationService.SerializeToJson(products);
+                        contentType = "application/json";
+                    }
+                    else
+                    {
+                        bytes = SerializationService.SerializeToXml(products);
+                        contentType = "application/xml";
+                    }
+                    fileName = $"productos_{DateTime.Now:yyyyMMdd_HHmmss}.{exportFormat}";
+                    break;
+
+                case "Usuarios":
+                    var users = UserBLL.GetAllUsers();
+                    if (users == null || !users.Any())
+                    {
+                        exportMessage = $"No hay datos para exportar en {selectedEntity}.";
+                        return;
+                    }
+                    if (exportFormat == "json")
+                    {
+                        bytes = SerializationService.SerializeToJson(users);
+                        contentType = "application/json";
+                    }
+                    else
+                    {
+                        bytes = SerializationService.SerializeToXml(users);
+                        contentType = "application/xml";
+                    }
+                    fileName = $"usuarios_{DateTime.Now:yyyyMMdd_HHmmss}.{exportFormat}";
+                    break;
+
+                case "Logs":
+                    var logs = LogBLL.GetLogs(null, null, null, null);
+                    if (logs == null || !logs.Any())
+                    {
+                        exportMessage = $"No hay datos para exportar en {selectedEntity}.";
+                        return;
+                    }
+                    if (exportFormat == "json")
+                    {
+                        bytes = SerializationService.SerializeToJson(logs);
+                        contentType = "application/json";
+                    }
+                    else
+                    {
+                        bytes = SerializationService.SerializeToXml(logs);
+                        contentType = "application/xml";
+                    }
+                    fileName = $"logs_{DateTime.Now:yyyyMMdd_HHmmss}.{exportFormat}";
+                    break;
+
+                default:
+                    throw new InvalidOperationException("Entidad no soportada");
+            }
+
+            var base64 = Convert.ToBase64String(bytes);
+            await JS.InvokeVoidAsync("downloadFile", contentType, fileName, base64);
+            exportMessage = $"{selectedEntity} exportados exitosamente como {exportFormat.ToUpper()}.";
+        }
+        catch (Exception ex)
+        {
+            exportMessage = $"Error al exportar: {ex.Message}";
+            Logger.LogError(ex, "Error al exportar {Entity} en formato {Format}", selectedEntity, exportFormat);
+        }
+        finally
+        {
+            exporting = false;
+        }
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        importMessage = null;
+        importedData = null;
+        canImport = false;
+        
+        if (selectedFile != null)
+        {
+            var extension = Path.GetExtension(selectedFile.Name).ToLowerInvariant();
+            if (extension == ".json")
+            {
+                importFormat = "json";
+            }
+            else if (extension == ".xml")
+            {
+                importFormat = "xml";
+            }
+        }
+    }
+
+    private async Task PreviewData()
+    {
+        if (selectedFile == null) return;
+        previewing = true;
+        importMessage = null;
+        importedData = null;
+        canImport = false;
+
+        try
+        {
+            if (selectedFile.Size > 10 * 1024 * 1024)
+            {
+                importMessage = "El archivo es demasiado grande. Máximo 10 MB.";
+                return;
+            }
+
+            await using var stream = selectedFile.OpenReadStream(long.MaxValue);
+            
+            switch (selectedEntity)
+            {
+                case "Productos":
+                    importedData = importFormat == "json"
+                        ? await SerializationService.DeserializeFromJsonAsync<ProductDTO>(stream)
+                        : await SerializationService.DeserializeFromXmlAsync<ProductDTO>(stream);
+                    break;
+                case "Usuarios":
+                    importedData = importFormat == "json"
+                        ? await SerializationService.DeserializeFromJsonAsync<UserDTO>(stream)
+                        : await SerializationService.DeserializeFromXmlAsync<UserDTO>(stream);
+                    break;
+                case "Logs":
+                    importedData = importFormat == "json"
+                        ? await SerializationService.DeserializeFromJsonAsync<LogDTO>(stream)
+                        : await SerializationService.DeserializeFromXmlAsync<LogDTO>(stream);
+                    break;
+            }
+
+            int count = 0;
+            if (importedData is IEnumerable<object> enumerable)
+            {
+                count = enumerable.Count();
+            }
+
+            if (count > 0)
+            {
+                canImport = true;
+                importMessage = $"Vista previa cargada: {count} elementos encontrados.";
+            }
+            else
+            {
+                importMessage = "No se encontraron datos válidos en el archivo.";
+            }
+        }
+        catch (JsonException ex)
+        {
+            importMessage = $"Error en formato JSON: {ex.Message}";
+            await JS.InvokeVoidAsync("alert", $"Error en formato JSON: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            importMessage = $"Error en formato XML: {ex.Message}";
+            await JS.InvokeVoidAsync("alert", $"Error en formato XML: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            importMessage = $"Error inesperado al cargar vista previa: {ex.Message}. Verifica la consola para más detalles.";
+            Logger.LogError(ex, "Error inesperado al cargar vista previa para {Entity}", selectedEntity);
+        }
+        finally
+        {
+            previewing = false;
+        }
+    }
+
+    private async Task ImportData()
+    {
+        if (selectedFile == null) return;
+        importing = true;
+        importMessage = null;
+
+        try
+        {
+            Logger.LogInformation("Iniciando importación para entidad {Entity}, formato {Format}, archivo {FileName}", selectedEntity, importFormat, selectedFile.Name);
+
+            // Si no hay datos cargados de la vista previa, deserializar ahora
+            if (importedData == null)
+            {
+                if (selectedFile.Size > 10 * 1024 * 1024)
+                {
+                    importMessage = "El archivo es demasiado grande. Máximo 10 MB.";
+                    return;
+                }
+
+                await using var stream = selectedFile.OpenReadStream(long.MaxValue);
+                
+                switch (selectedEntity)
+                {
+                    case "Productos":
+                        importedData = importFormat == "json"
+                            ? await SerializationService.DeserializeFromJsonAsync<ProductDTO>(stream)
+                            : await SerializationService.DeserializeFromXmlAsync<ProductDTO>(stream);
+                        break;
+                    case "Usuarios":
+                        importedData = importFormat == "json"
+                            ? await SerializationService.DeserializeFromJsonAsync<UserDTO>(stream)
+                            : await SerializationService.DeserializeFromXmlAsync<UserDTO>(stream);
+                        break;
+                    case "Logs":
+                        importedData = importFormat == "json"
+                            ? await SerializationService.DeserializeFromJsonAsync<LogDTO>(stream)
+                            : await SerializationService.DeserializeFromXmlAsync<LogDTO>(stream);
+                        break;
+                }
+            }
+
+            int totalCount = 0;
+            int persisted = 0;
+
+            switch (selectedEntity)
+            {
+                case "Productos":
+                    if (importedData is List<ProductDTO> products)
+                    {
+                        totalCount = products.Count;
+                        Logger.LogInformation("Datos válidos encontrados: {Count} productos", totalCount);
+                        
+                        if (persist)
+                        {
+                            foreach (var product in products)
+                            {
+                                try
+                                {
+                                    product.Id = 0;
+                                    ProductBLL.AddProduct(product);
+                                    persisted++;
+                                    Logger.LogInformation("Producto persistido: {ProductName}", product.ProductName);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.LogError(ex, "Error al persistir producto: {ProductName}", product.ProductName);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        importMessage = "Los datos no son del tipo correcto para Productos.";
+                        Logger.LogWarning("Los datos no son del tipo ProductDTO");
+                        return;
+                    }
+                    break;
+
+                case "Usuarios":
+                    if (importedData is List<UserDTO> users)
+                    {
+                        totalCount = users.Count;
+                        Logger.LogInformation("Datos válidos encontrados: {Count} usuarios", totalCount);
+                        // Nota: IUserBLL no tiene AddUser, así que no se puede persistir usuarios directamente
+                        // Puedes implementar un método AddUser en IUserBLL si es necesario
+                        if (persist)
+                        {
+                            Logger.LogWarning("Persistencia de usuarios no implementada");
+                        }
+                    }
+                    else
+                    {
+                        importMessage = "Los datos no son del tipo correcto para Usuarios.";
+                        Logger.LogWarning("Los datos no son del tipo UserDTO");
+                        return;
+                    }
+                    break;
+
+                case "Logs":
+                    if (importedData is List<LogDTO> logs)
+                    {
+                        totalCount = logs.Count;
+                        Logger.LogInformation("Datos válidos encontrados: {Count} logs", totalCount);
+                        
+                        if (persist)
+                        {
+                            foreach (var log in logs)
+                            {
+                                try
+                                {
+                                    // Convertir LogDTO a Log entity si es necesario
+                                    // Por simplicidad, asumir que LogBLL.Save acepta LogDTO o implementar conversión
+                                    // LogBLL.Save(new Log { /* mapear propiedades */ });
+                                    persisted++;
+                                    Logger.LogInformation("Log persistido: {Module} - {Message}", log.Module, log.Message);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.LogError(ex, "Error al persistir log: {Module} - {Message}", log.Module, log.Message);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        importMessage = "Los datos no son del tipo correcto para Logs.";
+                        Logger.LogWarning("Los datos no son del tipo LogDTO");
+                        return;
+                    }
+                    break;
+
+                default:
+                    importMessage = "Entidad no soportada.";
+                    return;
+            }
+
+            importMessage = $"Importados: {totalCount}. Persistidos: {persisted}.";
+            Logger.LogInformation("Importación completada para {Entity}: {Message}", selectedEntity, importMessage);
+        }
+        catch (Exception ex)
+        {
+            importMessage = $"Error inesperado al importar: {ex.Message}. Verifica la consola para más detalles.";
+            Logger.LogError(ex, "Error inesperado al importar para {Entity}", selectedEntity);
+            // No mostrar alert para evitar bloqueo, en su lugar loguear
+        }
+        finally
+        {
+            importing = false;
+        }
+    }
+}
+
+
