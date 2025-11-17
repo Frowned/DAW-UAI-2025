@@ -48,9 +48,11 @@ namespace BE.DTO
         [JsonPropertyName("points")]
         [XmlElement("Points")]
         public long Points { get; set; }
-
         [JsonPropertyName("userRole")]
         [XmlElement("UserRole")]
         public Role UserRole { get; set; }
+        [JsonPropertyName("passwordLastUpdatedAt")]
+        [XmlElement("PasswordLastUpdatedAt")]
+        public DateTime PasswordLastUpdatedAt { get; set; }
     }
 }

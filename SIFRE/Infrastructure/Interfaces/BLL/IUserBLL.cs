@@ -10,5 +10,8 @@ namespace Infrastructure.Interfaces.BLL
         void UpdateUserLanguage(Guid userId, int languageId);
         List<UserDTO> GetAllUsers();
         void AssignRole(Role role, UserDTO user);
+        bool IsPasswordExpired(UserDTO user);
+        void UpdatePassword(string username, string newEncryptedPassword);
+        bool ValidatePassword(string password);
     }
 }
