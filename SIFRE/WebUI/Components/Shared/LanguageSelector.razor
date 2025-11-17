@@ -1,0 +1,150 @@
+@using BE.DTO
+@using Infrastructure.Session
+@using WebUI.Services
+@inject ILanguageBLL LanguageBLL
+@inject LanguageService LanguageService
+@rendermode InteractiveServer
+
+<div class="language-selector d-flex align-items-center">
+    @if (ShowLabel)
+    {
+        <small class="text-white me-2">@Label</small>
+    }
+
+    @if (ShowAsDropdown)
+    {
+        <div class="input-group input-group-sm" style="max-width: 200px;">
+            <span class="input-group-text bg-transparent text-white border-secondary">🌍</span>
+            <select class="form-select form-select-sm bg-dark text-white border-secondary"
+                    @onchange="OnLanguageSelected"
+                    value="@(CurrentLanguage?.Id.ToString() ?? "")">
+                <option value="" disabled>Seleccionar idioma</option>
+                @foreach (var language in AvailableLanguages)
+                {
+                    <option value="@language.Id">@language.Name</option>
+                }
+            </select>
+        </div>
+    }
+    else
+    {
+        <div class="btn-group btn-group-sm" role="group" aria-label="Language selector">
+            @foreach (var language in AvailableLanguages)
+            {
+                <button type="button"
+                        class="btn @(IsCurrentLanguage(language) ? "btn-light" : "btn-outline-light")"
+                        @onclick="() => ChangeLanguage(language)">
+                    @language.Name
+                </button>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .language-selector .form-select {
+        cursor: pointer;
+    }
+
+    .language-selector .form-select:focus {
+        border-color: #6c757d;
+        box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.25);
+    }
+
+    .language-selector .input-group-text {
+        border-right: none;
+    }
+
+    .language-selector .form-select {
+        border-left: none;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Si es true, muestra un dropdown. Si es false, muestra botones horizontales
+    /// </summary>
+    [Parameter]
+    public bool ShowAsDropdown { get; set; } = true;
+
+    /// <summary>
+    /// Si es true, muestra una etiqueta junto al selector
+    /// </summary>
+    [Parameter]
+    public bool ShowLabel { get; set; } = false;
+
+    /// <summary>
+    /// Texto de la etiqueta
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "Idioma:";
+
+    /// <summary>
+    /// Evento que se dispara cuando cambia el idioma
+    /// </summary>
+    [Parameter]
+    public EventCallback<LanguageDTO> OnLanguageChanged { get; set; }
+
+    private List<LanguageDTO> AvailableLanguages { get; set; } = new();
+    private LanguageDTO? CurrentLanguage { get; set; }
+
+    protected override void OnInitialized()
+    {
+        LoadLanguages();
+        CurrentLanguage = LanguageService.CurrentLanguage;
+    }
+
+    private void LoadLanguages()
+    {
+        try
+        {
+            AvailableLanguages = LanguageBLL.GetAllLanguages();
+
+            // Cargar traducciones para cada idioma
+            foreach (var lang in AvailableLanguages)
+            {
+                var translations = LanguageBLL.GetAllTranslations(lang.Id);
+                lang.Translations = translations;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading languages: {ex.Message}");
+            AvailableLanguages = new List<LanguageDTO>();
+        }
+    }
+
+    private async Task OnLanguageSelected(ChangeEventArgs e)
+    {
+        if (e.Value == null || string.IsNullOrEmpty(e.Value.ToString()))
+            return;
+
+        var selectedId = int.Parse(e.Value.ToString()!);
+        var selectedLanguage = AvailableLanguages.FirstOrDefault(l => l.Id == selectedId);
+
+        if (selectedLanguage != null)
+        {
+            await ChangeLanguage(selectedLanguage);
+        }
+    }
+
+    private async Task ChangeLanguage(LanguageDTO language)
+    {
+        CurrentLanguage = language;
+        LanguageService.ChangeLanguage(language);
+
+        // Forzar re-renderizado
+        StateHasChanged();
+
+        // Notificar al componente padre si hay callback
+        if (OnLanguageChanged.HasDelegate)
+        {
+            await OnLanguageChanged.InvokeAsync(language);
+        }
+    }
+
+    private bool IsCurrentLanguage(LanguageDTO language)
+    {
+        return CurrentLanguage?.Id == language.Id;
+    }
+}

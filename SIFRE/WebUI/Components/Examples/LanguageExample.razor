@@ -1,0 +1,131 @@
+@page "/ejemplo-idiomas"
+@inherits LanguageAwareComponentBase
+@using BE.Enums
+
+<RoleGuard RequiredPermissions="@(new[] { PermissionsType.CONSULTAR_PUNTOS })">
+
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3>@T("EXAMPLE_PAGE_TITLE", "🌍 Ejemplo de Sistema de Idiomas")</h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <strong>@T("EXAMPLE_INFO_TITLE", "ℹ️ Información:")}</strong>
+                    <p class="mb-0">
+                        @T("EXAMPLE_INFO_TEXT", "Este es un ejemplo de cómo usar el sistema de idiomas. Cambia el idioma usando el selector en la parte superior del menú para ver los cambios en tiempo real.")
+                    </p>
+                </div>
+
+                <h5>@T("EXAMPLE_FEATURES_TITLE", "Características Demostradas:")</h5>
+                <ul>
+                    <li>@T("EXAMPLE_FEATURE_1", "Actualización automática al cambiar idioma")</li>
+                    <li>@T("EXAMPLE_FEATURE_2", "Textos por defecto si no hay traducción")</li>
+                    <li>@T("EXAMPLE_FEATURE_3", "Integración con componentes Blazor")</li>
+                </ul>
+
+                <hr />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6>@T("EXAMPLE_FORM_TITLE", "Formulario de Ejemplo")</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">@T("EXAMPLE_NAME_LABEL", "Nombre:")</label>
+                                    <input type="text" class="form-control" @bind="nombre"
+                                           placeholder="@T("EXAMPLE_NAME_PLACEHOLDER", "Ingrese su nombre")" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">@T("EXAMPLE_EMAIL_LABEL", "Email:")</label>
+                                    <input type="email" class="form-control" @bind="email"
+                                           placeholder="@T("EXAMPLE_EMAIL_PLACEHOLDER", "ejemplo@correo.com")" />
+                                </div>
+                                <button class="btn btn-primary" @onclick="SaveForm">
+                                    @T("BTN_SAVE", "💾 Guardar")
+                                </button>
+                                <button class="btn btn-secondary" @onclick="ClearForm">
+                                    @T("BTN_CLEAR", "🗑️ Limpiar")
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6>@T("EXAMPLE_RESULTS_TITLE", "Resultados")</h6>
+                                @if (formSubmitted)
+                                {
+                                    <div class="alert alert-success">
+                                        <strong>@T("MSG_SUCCESS", "✅ ¡Éxito!")</strong>
+                                        <p class="mb-0">@T("MSG_FORM_SAVED", "El formulario fue guardado correctamente.")</p>
+                                    </div>
+                                    <p><strong>@T("EXAMPLE_NAME_LABEL", "Nombre:")}</strong> @nombre</p>
+                                    <p><strong>@T("EXAMPLE_EMAIL_LABEL", "Email:")}</strong> @email</p>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-secondary">
+                                        @T("MSG_NO_DATA", "No hay datos para mostrar. Complete el formulario.")
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6>@T("EXAMPLE_TECHNICAL_INFO", "Información Técnica")</h6>
+                        <p class="small mb-1">
+                            <strong>@T("EXAMPLE_CURRENT_LANG", "Idioma actual:")}</strong>
+                            @(LanguageService.CurrentLanguage?.Name ?? "No definido")
+                        </p>
+                        <p class="small mb-1">
+                            <strong>@T("EXAMPLE_TRANSLATIONS_COUNT", "Traducciones cargadas:")}</strong>
+                            @(LanguageService.CurrentLanguage?.Translations?.Count ?? 0)
+                        </p>
+                        <p class="small mb-0">
+                            <strong>@T("EXAMPLE_COMPONENT_TYPE", "Tipo de componente:")}</strong>
+                            LanguageAwareComponentBase (actualización automática)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="alert alert-warning">
+                <strong>@T("EXAMPLE_NOTE_TITLE", "📝 Nota:")}</strong>
+                @T("EXAMPLE_NOTE_TEXT", "Para configurar los idiomas y traducciones, ve a Configuración > Gestionar Idiomas en el menú lateral.")
+            </div>
+        </div>
+    </div>
+
+</RoleGuard>
+
+@code {
+    private string nombre = "";
+    private string email = "";
+    private bool formSubmitted = false;
+
+    private void SaveForm()
+    {
+        if (!string.IsNullOrWhiteSpace(nombre) && !string.IsNullOrWhiteSpace(email))
+        {
+            formSubmitted = true;
+        }
+    }
+
+    private void ClearForm()
+    {
+        nombre = "";
+        email = "";
+        formSubmitted = false;
+    }
+
+    // Este componente se actualiza automáticamente cuando cambia el idioma
+    // gracias a que hereda de LanguageAwareComponentBase.
+    // No se necesita código adicional para la actualización.
+}

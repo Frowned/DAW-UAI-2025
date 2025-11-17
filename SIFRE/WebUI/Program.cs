@@ -49,6 +49,7 @@ DatabaseHelper.Configure(builder.Configuration.GetConnectionString("DefaultConne
 builder.Services.AddScoped<IDbConnection>(_ => new SqlConnection(connectionString));
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<SerializationService>();
+builder.Services.AddScoped<LanguageService>();
 
 var app = builder.Build();
 
