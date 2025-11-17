@@ -1,11 +1,16 @@
 ﻿@using BE.Enums
+@using BE.Entities
 @using Infrastructure.Session
 @inject NavigationManager Navigation
 @inject IUserBLL UserBLL
 @inject ILanguageBLL LanguageBLL
+@inject IProductBLL ProductBLL
+@inject IPointBLL PointBLL
+@inject ILogBLL LogBLL
+@rendermode InteractiveServer
 
 @page "/"
-<PageTitle>Inicio</PageTitle>
+<PageTitle>Inicio - SIFRE</PageTitle>
 
 @if (!IsAuthenticated)
 {
@@ -13,29 +18,161 @@
 }
 else
 {
-    <h3>Bienvenido, @Username</h3>
+    <!-- Encabezado de bienvenida -->
+    <div class="mb-4">
+        <h1 class="display-4 text-primary fw-bold">¡Bienvenido, @Username! 👋</h1>
+        <p class="lead text-muted">@GetGreetingMessage()</p>
+        <hr class="my-4" />
+    </div>
 
-    <div>
-        <h4>Opciones disponibles:</h4>
-        <ul>
-            @if (CanManageProfiles)
-            {
-                <li><a href="/manage-profiles">Gestionar Perfiles</a></li>
-            }
-            @if (CanViewReports)
-            {
-                <li><a href="/reports">Ver Reportes</a></li>
-            }
-            @if (CanManageProducts)
-            {
-                <li><a href="/manage-products">Gestionar Productos</a></li>
-            }
-            @if (CanViewPoints)
-            {
-                <li><a href="/points">Consultar Puntos</a></li>
-            }
-            <li><a href="/serializar">Importar/Exportar JSON/XML</a></li>
-        </ul>
+    <!-- Panel de información según permisos -->
+    <div class="row g-4">
+
+        @* PANEL DE PUNTOS - Para usuarios con permiso de consultar puntos *@
+        @if (HasPermission(PermissionsType.CONSULTAR_PUNTOS))
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-success shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">💰 Mis Puntos</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <h2 class="display-3 text-success fw-bold">@UserPoints</h2>
+                        <p class="text-muted">Puntos disponibles</p>
+                        @if (UserPoints > 0)
+                        {
+                            <p class="small text-success">
+                                <i class="bi bi-check-circle"></i> ¡Tienes puntos para canjear!
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="small text-muted">Acumula puntos realizando actividades</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* PANEL DE PRODUCTOS - Para usuarios con permiso de ver productos *@
+        @if (HasPermission(PermissionsType.VER_PRODUCTOS))
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-info shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">📦 Catálogo de Productos</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <h2 class="display-3 text-info fw-bold">@AvailableProducts</h2>
+                        <p class="text-muted">Productos disponibles</p>
+                        @if (AvailableProducts > 0)
+                        {
+                            <p class="small text-info">
+                                <i class="bi bi-star-fill"></i> Revisa el catálogo en el menú
+                            </p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* PANEL DE ADMINISTRACIÓN - Para administradores *@
+        @if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-warning shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">⚙️ Administración</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-warning">Panel de Control</h6>
+                        <ul class="list-unstyled small">
+                            <li class="mb-2">
+                                <span class="badge bg-success">@TotalProducts</span> Productos totales
+                            </li>
+                            <li class="mb-2">
+                                <span class="badge bg-primary">@ActiveProducts</span> Productos activos
+                            </li>
+                            <li class="mb-2">
+                                <span class="badge bg-secondary">@TotalCategories</span> Categorías
+                            </li>
+                        </ul>
+                        <p class="small text-muted mb-0">Gestiona el sistema desde el menú de configuración</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+
+        @* PANEL DE BACKUP - Para administradores con acceso a backup *@
+        @if (HasPermission(PermissionsType.GESTIONAR_BACKUP))
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-secondary shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">💾 Sistema</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-secondary">Seguridad y Backups</h6>
+                        <p class="small text-muted">
+                            Accede a las herramientas de administración del sistema desde el menú de configuración
+                        </p>
+                        <div class="small">
+                            <span class="badge bg-success">Sistema operativo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* PANEL DE IDIOMAS - Para usuarios con acceso a gestión de idiomas *@
+        @if (HasPermission(PermissionsType.GESTIONAR_IDIOMA))
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-info shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">🌍 Idiomas</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-info">Sistema Multiidioma</h6>
+                        <p class="small mb-2">
+                            <span class="badge bg-info">@TotalLanguages</span> idiomas configurados
+                        </p>
+                        <p class="small text-muted mb-0">
+                            Gestiona las traducciones desde el menú de configuración
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Mensaje de ayuda si no tiene ningún permiso especial -->
+    @if (!HasAnyDashboardPermission())
+    {
+        <div class="alert alert-info mt-4">
+            <h5 class="alert-heading">
+                <i class="bi bi-info-circle"></i> Bienvenido al sistema SIFRE
+            </h5>
+            <p class="mb-0">
+                Utiliza el menú lateral para navegar por las opciones disponibles según tus permisos.
+            </p>
+        </div>
+    }
+
+    <!-- Footer informativo -->
+    <div class="mt-5 pt-4 border-top">
+        <div class="row text-center text-muted small">
+            <div class="col-md-4">
+                <i class="bi bi-shield-check"></i> Sistema Seguro
+            </div>
+            <div class="col-md-4">
+                <i class="bi bi-clock"></i> @DateTime.Now.ToString("dddd, dd MMMM yyyy")
+            </div>
+            <div class="col-md-4">
+                <i class="bi bi-person-badge"></i> Sesión: @Username
+            </div>
+        </div>
     </div>
 }
 
@@ -43,35 +180,105 @@ else
     private bool IsAuthenticated { get; set; } = false;
     private string Username { get; set; } = string.Empty;
 
-    // Permisos
-    private bool CanManageProfiles { get; set; } = false;
-    private bool CanViewReports { get; set; } = false;
-    private bool CanManageProducts { get; set; } = false;
-    private bool CanViewPoints { get; set; } = false;
+    // Datos del dashboard
+    private long UserPoints { get; set; } = 0;
+    private int AvailableProducts { get; set; } = 0;
+    private int TotalProducts { get; set; } = 0;
+    private int ActiveProducts { get; set; } = 0;
+    private int TotalCategories { get; set; } = 0;
+    private int RecentLogsCount { get; set; } = 0;
+    private bool HasRecentActivity => RecentLogsCount > 10;
+    private int TotalLanguages { get; set; } = 0;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        // Verificar si el usuario está autenticado
         var session = SingletonSession.Instancia;
 
         if (session.User == null)
         {
-            // Redirigir al login si no hay sesión activa
+            // No forzar recarga completa para evitar NavigationException
             Navigation.NavigateTo("/login", true);
+            return;
         }
-        else
+
+        IsAuthenticated = true;
+        Username = session.User.Username;
+
+        // Cargar datos según permisos
+        LoadDashboardData();
+    }
+
+    private void LoadDashboardData()
+    {
+        try
         {
-            IsAuthenticated = true;
-            Username = session.User.Username;
+            var session = SingletonSession.Instancia;
 
-            // Configurar permisos según el rol del usuario
-            CanManageProfiles = session.IsInRole(PermissionsType.GESTIONAR_PERFIL);
-            CanViewReports = session.IsInRole(PermissionsType.VER_REPORTERIA);
-            CanManageProducts = session.IsInRole(PermissionsType.GESTIONAR_PRODUCTOS);
-            CanViewPoints = session.IsInRole(PermissionsType.CONSULTAR_PUNTOS);
+            // Cargar puntos del usuario si tiene permiso
+            if (HasPermission(PermissionsType.CONSULTAR_PUNTOS))
+            {
+                UserPoints = PointBLL.GetPointsByUserId(session.User.Id);
+            }
 
-            // Cargar idioma actual
-            // TODO: session.currentLanguage = await LanguageBLL.GetByIdAsync(session.User.LanguageId, true);
+            // Cargar productos si tiene permiso
+            if (HasPermission(PermissionsType.VER_PRODUCTOS))
+            {
+                var products = ProductBLL.GetProducts(false, false);
+                AvailableProducts = products.Count();
+            }
+
+            // Cargar estadísticas de administración
+            if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
+            {
+                var allProducts = ProductBLL.GetProducts(false, true);
+                TotalProducts = allProducts.Count();
+                ActiveProducts = allProducts.Count(p => !p.EndDate.HasValue || p.EndDate.Value >= DateTime.Now);
+                TotalCategories = ProductBLL.GetCategories().Count();
+            }
+
+            // Cargar actividad reciente
+            if (HasPermission(PermissionsType.VER_REPORTERIA))
+            {
+                var yesterday = DateTime.Now.AddDays(-1);
+                var recentLogs = LogBLL.GetLogs(null, null, yesterday, DateTime.Now);
+                RecentLogsCount = recentLogs.Count;
+            }
+
+            // Cargar idiomas
+            if (HasPermission(PermissionsType.GESTIONAR_IDIOMA))
+            {
+                TotalLanguages = LanguageBLL.GetAllLanguages().Count;
+            }
         }
+        catch (Exception)
+        {
+            // En caso de error, simplemente no mostrar los datos
+        }
+    }
+
+    private bool HasPermission(PermissionsType permission)
+    {
+        return SingletonSession.Instancia?.IsInRole(permission) == true;
+    }
+
+    private bool HasAnyDashboardPermission()
+    {
+        return HasPermission(PermissionsType.CONSULTAR_PUNTOS) ||
+               HasPermission(PermissionsType.VER_PRODUCTOS) ||
+               HasPermission(PermissionsType.GESTIONAR_PRODUCTOS) ||
+               HasPermission(PermissionsType.VER_REPORTERIA) ||
+               HasPermission(PermissionsType.GESTIONAR_BACKUP) ||
+               HasPermission(PermissionsType.GESTIONAR_IDIOMA);
+    }
+
+    private string GetGreetingMessage()
+    {
+        var hour = DateTime.Now.Hour;
+        if (hour < 12)
+            return "Buenos días. Aquí está el resumen de tu actividad.";
+        else if (hour < 18)
+            return "Buenas tardes. Aquí está el resumen de tu actividad.";
+        else
+            return "Buenas noches. Aquí está el resumen de tu actividad.";
     }
 }

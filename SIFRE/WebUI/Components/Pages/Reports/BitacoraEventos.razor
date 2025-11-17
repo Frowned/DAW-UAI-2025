@@ -78,8 +78,16 @@
         </div>
 
         <div class="mt-3">
-            <button class="btn btn-success" @onclick="ExportToPdf">
-                📄 Exportar a PDF
+            <button class="btn btn-success" @onclick="ExportToPdf" disabled="@isExporting">
+                @if (isExporting)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <text>Generando PDF...</text>
+                }
+                else
+                {
+                    <text>📄 Exportar a PDF</text>
+                }
             </button>
             <span class="ms-3 text-muted">Total de registros: @logs.Count</span>
         </div>
@@ -105,6 +113,7 @@
     private LogType? typeFilter = null;
     private DateTime? dateFromFilter;
     private DateTime? dateToFilter;
+    private bool isExporting = false;
 
     protected override void OnInitialized()
     {
@@ -181,16 +190,37 @@
             return;
         }
 
+        if (isExporting)
+        {
+            return; // Prevenir múltiples clics
+        }
+
         try
         {
-            var pdfBytes = PdfExportService.CrearReportePDF(logs);
-            var base64 = Convert.ToBase64String(pdfBytes);
-            var date = DateTime.Now.ToString("yyyyMMddHHmmss");
-            await JSRuntime.InvokeVoidAsync("descargarArchivo", $"bitacora-eventos-{date}.pdf", base64);
+            isExporting = true;
+            StateHasChanged(); // Actualizar UI para mostrar estado de carga
+
+            // Preparar los datos de filtro para enviar al API
+            var requestData = new
+            {
+                ModuleFilter = moduleFilter,
+                TypeFilter = typeFilter,
+                DateFrom = dateFromFilter,
+                DateTo = dateToFilter
+            };
+
+            // Llamar al endpoint de API que genera y descarga el PDF directamente
+            // No necesitamos esperar respuesta ya que la descarga se maneja en el cliente
+            await JSRuntime.InvokeVoidAsync("downloadPdfFromApi", "/api/pdf/bitacora-eventos", requestData);
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", "Error al exportar: " + ex.Message);
+            await JSRuntime.InvokeVoidAsync("alert", $"Error al exportar PDF: {ex.Message}");
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged(); // Actualizar UI para restaurar estado normal
         }
     }
 } 

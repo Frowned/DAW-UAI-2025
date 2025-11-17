@@ -1,0 +1,483 @@
+@page "/gestionar-idiomas"
+@using BE.DTO
+@using BE.Entities
+@using BE.Enums
+@inject ILanguageBLL LanguageBLL
+@inject ILogBLL LogBLL
+@using Infrastructure.Mappers
+@using Infrastructure.Session
+@rendermode InteractiveServer
+@using WebUI.Components
+
+<RoleGuard RequiredPermissions="@(new[] { PermissionsType.GESTIONAR_IDIOMA })">
+
+    <h3 class="text-success fw-bold">🌍 Gestión de Idiomas</h3>
+
+    @if (!string.IsNullOrEmpty(AlertMessage))
+    {
+        <div class="alert @AlertCss alert-dismissible fade show" role="alert">
+            @AlertMessage
+            <button type="button" class="btn-close" @onclick="() => AlertMessage = null"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Sección de Idiomas -->
+        <div class="col-md-7">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Idiomas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del idioma:</label>
+                            <input class="form-control" @bind="LanguageName" placeholder="Ej: Español, English" />
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-success me-2" @onclick="AddLanguage">
+                                ➕ Agregar
+                            </button>
+                            <button class="btn btn-danger" @onclick="DeleteLanguage" disabled="@(SelectedLanguage == null)">
+                                🗑️ Borrar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var lang in Languages)
+                                {
+                                    <tr class="@(SelectedLanguage?.Id == lang.Id ? "table-active" : "")"
+                                        @onclick="() => SelectLanguage(lang)"
+                                        style="cursor: pointer;">
+                                        <td>@lang.Id</td>
+                                        <td>@lang.Name</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Traducciones -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Traducciones @(SelectedLanguage != null ? $"- {SelectedLanguage.Name}" : "")</h5>
+                </div>
+                <div class="card-body">
+                    @if (SelectedLanguage == null)
+                    {
+                        <div class="alert alert-info">
+                            Seleccione un idioma para ver sus traducciones
+                        </div>
+                    }
+                    else if (SelectedLabel == null)
+                    {
+                        <div class="alert alert-warning">
+                            Seleccione una etiqueta para agregar/ver traducciones
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Traducción para "@SelectedLabel.Name":</label>
+                                <input class="form-control" @bind="TranslationText" placeholder="Ingrese la traducción" />
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-info me-2" @onclick="AddTranslation">
+                                    ➕ Agregar
+                                </button>
+                                <button class="btn btn-warning" @onclick="DeleteTranslation" disabled="@(SelectedTranslation == null)">
+                                    🗑️ Borrar
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>Etiqueta</th>
+                                    <th>Traducción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var trans in Translations)
+                                {
+                                    <tr class="@(SelectedTranslation?.LabelId == trans.LabelId ? "table-active" : "")"
+                                        @onclick="() => SelectTranslation(trans)"
+                                        style="cursor: pointer;">
+                                        <td>@trans.LabelName</td>
+                                        <td>@trans.TranslatedText</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Etiquetas -->
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Etiquetas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="form-label">Nombre de la etiqueta:</label>
+                            <input class="form-control" @bind="LabelName" placeholder="Ej: BTN_LOGIN, LBL_WELCOME" />
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button class="btn btn-warning me-2" @onclick="AddLabel">
+                                ➕ Agregar Etiqueta
+                            </button>
+                            <button class="btn btn-danger" @onclick="DeleteLabel" disabled="@(SelectedLabel == null)">
+                                🗑️ Borrar Etiqueta
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 650px; overflow-y: auto;">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var label in Labels)
+                                {
+                                    <tr class="@(SelectedLabel?.Id == label.Id ? "table-active" : "")"
+                                        @onclick="() => SelectLabel(label)"
+                                        style="cursor: pointer;">
+                                        <td>@label.Id</td>
+                                        <td>@label.Name</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</RoleGuard>
+
+@code {
+    private List<LanguageDTO> Languages = new();
+    private List<BE.Entities.Label> Labels = new();
+    private List<TranslationDTO> Translations = new();
+
+    private LanguageDTO? SelectedLanguage;
+    private BE.Entities.Label? SelectedLabel;
+    private TranslationDTO? SelectedTranslation;
+
+    private string? LanguageName;
+    private string? LabelName;
+    private string? TranslationText;
+
+    private string? AlertMessage;
+    private string AlertCss = "alert-success";
+
+    protected override void OnInitialized()
+    {
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        Languages = LanguageBLL.GetAllLanguages();
+        Labels = LanguageBLL.GetLabels();
+
+        // Mantener la selección actual si existe
+        if (SelectedLanguage != null)
+        {
+            var languageId = SelectedLanguage.Id;
+            SelectedLanguage = Languages.FirstOrDefault(l => l.Id == languageId);
+            if (SelectedLanguage != null)
+            {
+                Translations = LanguageBLL.GetAllTranslations(SelectedLanguage.Id);
+            }
+        }
+
+        if (SelectedLabel != null)
+        {
+            var labelId = SelectedLabel.Id;
+            SelectedLabel = Labels.FirstOrDefault(l => l.Id == labelId);
+        }
+    }
+
+    // ======== GESTIÓN DE IDIOMAS ========
+
+    private void SelectLanguage(LanguageDTO language)
+    {
+        SelectedLanguage = language;
+        LanguageName = language.Name;
+        Translations = LanguageBLL.GetAllTranslations(language.Id);
+        SelectedTranslation = null;
+        TranslationText = string.Empty;
+    }
+
+    private void AddLanguage()
+    {
+        if (string.IsNullOrWhiteSpace(LanguageName))
+        {
+            ShowAlert("El idioma no puede estar en blanco", "alert-danger");
+            return;
+        }
+
+        if (Languages.Any(l => l.Name.Equals(LanguageName, StringComparison.OrdinalIgnoreCase)))
+        {
+            ShowAlert("El idioma ya existe", "alert-danger");
+            return;
+        }
+
+        LanguageBLL.Save(new LanguageDTO(LanguageName));
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se creó el idioma {LanguageName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageLanguage"
+        });
+
+        ShowAlert($"Idioma '{LanguageName}' agregado correctamente", "alert-success");
+        LanguageName = string.Empty;
+        LoadData();
+    }
+
+    private void DeleteLanguage()
+    {
+        if (SelectedLanguage == null)
+        {
+            ShowAlert("Debe seleccionar un idioma", "alert-danger");
+            return;
+        }
+
+        var langName = SelectedLanguage.Name;
+        LanguageBLL.Delete(SelectedLanguage.Id);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se borró el idioma {langName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageLanguage"
+        });
+
+        ShowAlert($"Idioma '{langName}' borrado correctamente", "alert-warning");
+        SelectedLanguage = null;
+        LanguageName = string.Empty;
+        Translations.Clear();
+        LoadData();
+    }
+
+    // ======== GESTIÓN DE ETIQUETAS ========
+
+    private void SelectLabel(BE.Entities.Label label)
+    {
+        SelectedLabel = label;
+        LabelName = label.Name;
+
+        // Buscar si existe traducción para esta etiqueta en el idioma seleccionado
+        if (SelectedLanguage != null)
+        {
+            var existingTranslation = Translations.FirstOrDefault(t => t.LabelId == label.Id);
+            if (existingTranslation != null)
+            {
+                TranslationText = existingTranslation.TranslatedText;
+                SelectedTranslation = existingTranslation;
+            }
+            else
+            {
+                TranslationText = string.Empty;
+                SelectedTranslation = null;
+            }
+        }
+    }
+
+    private void AddLabel()
+    {
+        if (string.IsNullOrWhiteSpace(LabelName))
+        {
+            ShowAlert("La etiqueta no puede estar en blanco", "alert-danger");
+            return;
+        }
+
+        if (Labels.Any(l => l.Name.Equals(LabelName, StringComparison.OrdinalIgnoreCase)))
+        {
+            ShowAlert("La etiqueta ya existe", "alert-danger");
+            return;
+        }
+
+        LanguageBLL.AddLabel(new BE.Entities.Label(LabelName));
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se creó la etiqueta {LabelName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageLanguage"
+        });
+
+        ShowAlert($"Etiqueta '{LabelName}' agregada correctamente", "alert-success");
+        LabelName = string.Empty;
+        LoadData();
+    }
+
+    private void DeleteLabel()
+    {
+        if (SelectedLabel == null)
+        {
+            ShowAlert("Debe seleccionar una etiqueta", "alert-danger");
+            return;
+        }
+
+        if (!LanguageBLL.LabelExists(SelectedLabel.Name))
+        {
+            ShowAlert("La etiqueta no fue encontrada", "alert-danger");
+            return;
+        }
+
+        var labelName = SelectedLabel.Name;
+        LanguageBLL.DeleteLabel(SelectedLabel.Id);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se borró la etiqueta {labelName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageLanguage"
+        });
+
+        ShowAlert($"Etiqueta '{labelName}' borrada correctamente", "alert-warning");
+        SelectedLabel = null;
+        LabelName = string.Empty;
+        LoadData();
+    }
+
+    // ======== GESTIÓN DE TRADUCCIONES ========
+
+    private void SelectTranslation(TranslationDTO translation)
+    {
+        SelectedTranslation = translation;
+        TranslationText = translation.TranslatedText;
+
+        // Seleccionar la etiqueta correspondiente
+        var label = Labels.FirstOrDefault(l => l.Id == translation.LabelId);
+        if (label != null)
+        {
+            SelectedLabel = label;
+            LabelName = label.Name;
+        }
+    }
+
+    private void AddTranslation()
+    {
+        if (SelectedLanguage == null)
+        {
+            ShowAlert("Debe seleccionar un idioma", "alert-danger");
+            return;
+        }
+
+        if (SelectedLabel == null)
+        {
+            ShowAlert("Debe seleccionar una etiqueta", "alert-danger");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(TranslationText))
+        {
+            ShowAlert("La traducción no puede estar en blanco", "alert-danger");
+            return;
+        }
+
+        if (Translations.Any(t => t.LabelId == SelectedLabel.Id))
+        {
+            ShowAlert("La traducción ya existe para esta etiqueta", "alert-danger");
+            return;
+        }
+
+        LanguageBLL.AddTranslation(new Translation
+        {
+            LabelId = SelectedLabel.Id,
+            LanguageId = SelectedLanguage.Id,
+            TranslatedText = TranslationText
+        });
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se creó la traducción para '{SelectedLabel.Name}' en idioma '{SelectedLanguage.Name}'",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageLanguage"
+        });
+
+        ShowAlert($"Traducción agregada correctamente", "alert-success");
+        TranslationText = string.Empty;
+        LoadData();
+    }
+
+    private void DeleteTranslation()
+    {
+        if (SelectedLanguage == null)
+        {
+            ShowAlert("Debe seleccionar un idioma", "alert-danger");
+            return;
+        }
+
+        if (SelectedTranslation == null)
+        {
+            ShowAlert("Debe seleccionar una traducción", "alert-danger");
+            return;
+        }
+
+        LanguageBLL.DeleteTranslation(SelectedLanguage.Id, SelectedTranslation.LabelId);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se borró la traducción '{SelectedTranslation.TranslatedText}' del idioma '{SelectedLanguage.Name}'",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageLanguage"
+        });
+
+        ShowAlert($"Traducción borrada correctamente", "alert-warning");
+        SelectedTranslation = null;
+        TranslationText = string.Empty;
+        LoadData();
+    }
+
+    // ======== UTILIDADES ========
+
+    private void ShowAlert(string message, string cssClass)
+    {
+        AlertMessage = message;
+        AlertCss = cssClass;
+    }
+}
