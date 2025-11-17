@@ -1,6 +1,7 @@
 ﻿@using BE.Enums
 @using BE.Entities
 @using Infrastructure.Session
+@using WebUI.Components.Shared
 @inject NavigationManager Navigation
 @inject IUserBLL UserBLL
 @inject ILanguageBLL LanguageBLL
@@ -8,19 +9,20 @@
 @inject IPointBLL PointBLL
 @inject ILogBLL LogBLL
 @rendermode InteractiveServer
+@inherits LanguageAwareComponentBase
 
 @page "/"
 <PageTitle>Inicio - SIFRE</PageTitle>
 
 @if (!IsAuthenticated)
 {
-    <p>Redirigiendo al inicio de sesión...</p>
+    <p>@T("HOME_REDIRECTING", "Redirigiendo al inicio de sesión...")</p>
 }
 else
 {
     <!-- Encabezado de bienvenida -->
     <div class="mb-4">
-        <h1 class="display-4 text-primary fw-bold">¡Bienvenido, @Username! 👋</h1>
+        <h1 class="display-4 text-primary fw-bold">@string.Format(T("HOME_WELCOME", "¡Bienvenido, {0}!"), Username) 👋</h1>
         <p class="lead text-muted">@GetGreetingMessage()</p>
         <hr class="my-4" />
     </div>
@@ -34,20 +36,20 @@ else
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-success shadow-sm">
                     <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">💰 Mis Puntos</h5>
+                        <h5 class="mb-0">💰 @T("HOME_MY_POINTS", "Mis Puntos")</h5>
                     </div>
                     <div class="card-body text-center">
                         <h2 class="display-3 text-success fw-bold">@UserPoints</h2>
-                        <p class="text-muted">Puntos disponibles</p>
+                        <p class="text-muted">@T("HOME_POINTS_AVAILABLE", "Puntos disponibles")</p>
                         @if (UserPoints > 0)
                         {
                             <p class="small text-success">
-                                <i class="bi bi-check-circle"></i> ¡Tienes puntos para canjear!
+                                <i class="bi bi-check-circle"></i> @T("HOME_POINTS_TO_REDEEM", "¡Tienes puntos para canjear!")
                             </p>
                         }
                         else
                         {
-                            <p class="small text-muted">Acumula puntos realizando actividades</p>
+                            <p class="small text-muted">@T("HOME_ACCUMULATE_POINTS", "Acumula puntos realizando actividades")</p>
                         }
                     </div>
                 </div>
@@ -60,15 +62,15 @@ else
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-info shadow-sm">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">📦 Catálogo de Productos</h5>
+                        <h5 class="mb-0">📦 @T("HOME_PRODUCT_CATALOG", "Catálogo de Productos")</h5>
                     </div>
                     <div class="card-body text-center">
                         <h2 class="display-3 text-info fw-bold">@AvailableProducts</h2>
-                        <p class="text-muted">Productos disponibles</p>
+                        <p class="text-muted">@T("HOME_PRODUCTS_AVAILABLE", "Productos disponibles")</p>
                         @if (AvailableProducts > 0)
                         {
                             <p class="small text-info">
-                                <i class="bi bi-star-fill"></i> Revisa el catálogo en el menú
+                                <i class="bi bi-star-fill"></i> @T("HOME_CHECK_CATALOG", "Revisa el catálogo en el menú")
                             </p>
                         }
                     </div>
@@ -82,27 +84,55 @@ else
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-warning shadow-sm">
                     <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0">⚙️ Administración</h5>
+                        <h5 class="mb-0">⚙️ @T("HOME_ADMINISTRATION", "Administración")</h5>
                     </div>
                     <div class="card-body">
-                        <h6 class="text-warning">Panel de Control</h6>
+                        <h6 class="text-warning">@T("HOME_CONTROL_PANEL", "Panel de Control")</h6>
                         <ul class="list-unstyled small">
                             <li class="mb-2">
-                                <span class="badge bg-success">@TotalProducts</span> Productos totales
+                                <span class="badge bg-success">@TotalProducts</span> @T("HOME_TOTAL_PRODUCTS", "Productos totales")
                             </li>
                             <li class="mb-2">
-                                <span class="badge bg-primary">@ActiveProducts</span> Productos activos
+                                <span class="badge bg-primary">@ActiveProducts</span> @T("HOME_ACTIVE_PRODUCTS", "Productos activos")
                             </li>
                             <li class="mb-2">
-                                <span class="badge bg-secondary">@TotalCategories</span> Categorías
+                                <span class="badge bg-secondary">@TotalCategories</span> @T("HOME_CATEGORIES", "Categorías")
                             </li>
                         </ul>
-                        <p class="small text-muted mb-0">Gestiona el sistema desde el menú de configuración</p>
+                        <p class="small text-muted mb-0">@T("HOME_MANAGE_SYSTEM", "Gestiona el sistema desde el menú de configuración")</p>
                     </div>
                 </div>
             </div>
         }
 
+        @* PANEL DE REPORTERÍA - Para usuarios con acceso a reportería *@
+        @if (HasPermission(PermissionsType.VER_REPORTERIA))
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-primary shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">📊 @T("HOME_RECENT_ACTIVITY", "Actividad Reciente")</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-primary">@T("HOME_SYSTEM_EVENTS", "Eventos del sistema")</h6>
+                        <div class="text-center my-3">
+                            <h2 class="display-4 text-primary fw-bold">@RecentLogsCount</h2>
+                            <p class="small text-muted">@T("HOME_EVENTS_24H", "eventos en las últimas 24 horas")</p>
+                        </div>
+                        <div class="small text-center">
+                            @if (HasRecentActivity)
+                            {
+                                <span class="badge bg-success">@T("HOME_ACTIVE_SYSTEM", "Sistema activo")</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@T("HOME_LOW_ACTIVITY", "Poca actividad reciente")</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
 
         @* PANEL DE BACKUP - Para administradores con acceso a backup *@
         @if (HasPermission(PermissionsType.GESTIONAR_BACKUP))
@@ -110,15 +140,15 @@ else
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-secondary shadow-sm">
                     <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0">💾 Sistema</h5>
+                        <h5 class="mb-0">💾 @T("HOME_SYSTEM", "Sistema")</h5>
                     </div>
                     <div class="card-body">
-                        <h6 class="text-secondary">Seguridad y Backups</h6>
+                        <h6 class="text-secondary">@T("HOME_SECURITY_BACKUPS", "Seguridad y Backups")</h6>
                         <p class="small text-muted">
-                            Accede a las herramientas de administración del sistema desde el menú de configuración
+                            @T("HOME_ACCESS_TOOLS", "Accede a las herramientas de administración del sistema desde el menú de configuración")
                         </p>
                         <div class="small">
-                            <span class="badge bg-success">Sistema operativo</span>
+                            <span class="badge bg-success">@T("HOME_OPERATIONAL_SYSTEM", "Sistema operativo")</span>
                         </div>
                     </div>
                 </div>
@@ -131,15 +161,15 @@ else
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-info shadow-sm">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">🌍 Idiomas</h5>
+                        <h5 class="mb-0">🌍 @T("HOME_LANGUAGES", "Idiomas")</h5>
                     </div>
                     <div class="card-body">
-                        <h6 class="text-info">Sistema Multiidioma</h6>
+                        <h6 class="text-info">@T("HOME_MULTILANGUAGE_SYSTEM", "Sistema Multiidioma")</h6>
                         <p class="small mb-2">
-                            <span class="badge bg-info">@TotalLanguages</span> idiomas configurados
+                            <span class="badge bg-info">@TotalLanguages</span> @T("HOME_LANGUAGES_CONFIGURED", "idiomas configurados")
                         </p>
                         <p class="small text-muted mb-0">
-                            Gestiona las traducciones desde el menú de configuración
+                            @T("HOME_MANAGE_TRANSLATIONS", "Gestiona las traducciones desde el menú de configuración")
                         </p>
                     </div>
                 </div>
@@ -152,10 +182,10 @@ else
     {
         <div class="alert alert-info mt-4">
             <h5 class="alert-heading">
-                <i class="bi bi-info-circle"></i> Bienvenido al sistema SIFRE
+                <i class="bi bi-info-circle"></i> @T("HOME_WELCOME_SIFRE", "Bienvenido al sistema SIFRE")
             </h5>
             <p class="mb-0">
-                Utiliza el menú lateral para navegar por las opciones disponibles según tus permisos.
+                @T("HOME_USE_MENU", "Utiliza el menú lateral para navegar por las opciones disponibles según tus permisos.")
             </p>
         </div>
     }
@@ -164,13 +194,13 @@ else
     <div class="mt-5 pt-4 border-top">
         <div class="row text-center text-muted small">
             <div class="col-md-4">
-                <i class="bi bi-shield-check"></i> Sistema Seguro
+                <i class="bi bi-shield-check"></i> @T("HOME_SECURE_SYSTEM", "Sistema Seguro")
             </div>
             <div class="col-md-4">
                 <i class="bi bi-clock"></i> @DateTime.Now.ToString("dddd, dd MMMM yyyy")
             </div>
             <div class="col-md-4">
-                <i class="bi bi-person-badge"></i> Sesión: @Username
+                <i class="bi bi-person-badge"></i> @T("HOME_SESSION", "Sesión"): @Username
             </div>
         </div>
     </div>
@@ -192,6 +222,8 @@ else
 
     protected override void OnInitialized()
     {
+        base.OnInitialized(); // IMPORTANTE: Llama al método base para suscribirse a cambios de idioma
+
         var session = SingletonSession.Instancia;
 
         if (session.User == null)
@@ -275,10 +307,10 @@ else
     {
         var hour = DateTime.Now.Hour;
         if (hour < 12)
-            return "Buenos días. Aquí está el resumen de tu actividad.";
+            return T("HOME_GREETING_MORNING", "Buenos días. Aquí está el resumen de tu actividad.");
         else if (hour < 18)
-            return "Buenas tardes. Aquí está el resumen de tu actividad.";
+            return T("HOME_GREETING_AFTERNOON", "Buenas tardes. Aquí está el resumen de tu actividad.");
         else
-            return "Buenas noches. Aquí está el resumen de tu actividad.";
+            return T("HOME_GREETING_EVENING", "Buenas noches. Aquí está el resumen de tu actividad.");
     }
 }

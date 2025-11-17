@@ -1,6 +1,7 @@
 @using BE.Enums
 @using Infrastructure.Session
 @using WebUI.Components.Shared
+@inherits LanguageAwareComponentBase
 
 @rendermode InteractiveServer
 
@@ -22,7 +23,7 @@
             <div class="nav-item px-3">
                 <button class="nav-menu-header btn w-100 text-start" @onclick="() => ToggleMenu(0)" type="button">
                     <span class="nav-link menu-title">
-                        💰 Puntos
+                        💰 @T("MENU_POINTS", "Puntos")
                         <span class="chevron @(menuStates[0] ? "chevron-down" : "chevron-right")">▶</span>
                     </span>
                 </button>
@@ -30,19 +31,19 @@
                     @if (HasPermission(PermissionsType.CONSULTAR_PUNTOS))
                     {
                         <NavLink class="nav-link submenu-item" href="consultar-puntos">
-                            🔍 Consultar puntos
+                            🔍 @T("MENU_CONSULT_POINTS", "Consultar puntos")
                         </NavLink>
                     }
                     @if (HasPermission(PermissionsType.CANJEAR_PUNTOS))
                     {
                         <NavLink class="nav-link submenu-item" href="canjear-puntos">
-                            🔄 Canjear puntos
+                            🔄 @T("MENU_REDEEM_POINTS", "Canjear puntos")
                         </NavLink>
                     }
                     @if (HasPermission(PermissionsType.CONSULTAR_PUNTOS))
                     {
                         <NavLink class="nav-link submenu-item" href="transferir-puntos">
-                            📤 Transferir puntos
+                            📤 @T("MENU_TRANSFER_POINTS", "Transferir puntos")
                         </NavLink>
                     }
                 </div>
@@ -54,13 +55,13 @@
             <div class="nav-item px-3">
                 <button class="nav-menu-header btn w-100 text-start" @onclick="() => ToggleMenu(1)" type="button">
                     <span class="nav-link menu-title">
-                        📋 Catálogo
+                        📋 @T("MENU_CATALOG", "Catálogo")
                         <span class="chevron @(menuStates[1] ? "chevron-down" : "chevron-right")">▶</span>
                     </span>
                 </button>
                 <div class="nav-submenu @(menuStates[1] ? "show" : "")">
                     <NavLink class="nav-link submenu-item" href="ver-productos">
-                        📦 Ver productos
+                        📦 @T("MENU_VIEW_PRODUCTS", "Ver productos")
                     </NavLink>
                 </div>
             </div>
@@ -73,7 +74,7 @@
             <div class="nav-item px-3">
                 <button class="nav-menu-header btn w-100 text-start" @onclick="() => ToggleMenu(2)" type="button">
                     <span class="nav-link menu-title">
-                        📊 Reporterías
+                        📊 @T("MENU_REPORTS", "Reporterías")
                         <span class="chevron @(menuStates[2] ? "chevron-down" : "chevron-right")">▶</span>
                     </span>
                 </button>
@@ -81,10 +82,10 @@
                     @if (HasPermission(PermissionsType.VER_REPORTERIA))
                     {
                         <NavLink class="nav-link submenu-item" href="bitacora-eventos">
-                            📅 Bitácora eventos
+                            📅 @T("MENU_EVENT_LOG", "Bitácora eventos")
                         </NavLink>
                         <NavLink class="nav-link submenu-item" href="bitacora-productos">
-                            📦 Bitácora productos
+                            📦 @T("MENU_PRODUCT_LOG", "Bitácora productos")
                         </NavLink>
                     }
                     @*<NavLink class="nav-link submenu-item" href="bitacora-reconocimientos">
@@ -106,7 +107,7 @@
             <div class="nav-item px-3">
                 <button class="nav-menu-header btn w-100 text-start" @onclick="() => ToggleMenu(3)" type="button">
                     <span class="nav-link menu-title">
-                        ⚙️ Configuración
+                        ⚙️ @T("MENU_CONFIG", "Configuración")
                         <span class="chevron @(menuStates[3] ? "chevron-down" : "chevron-right")">▶</span>
                     </span>
                 </button>
@@ -117,25 +118,25 @@
                     @if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
                     {
                         <NavLink class="nav-link submenu-item" href="gestionar-productos">
-                            🛒 Gestionar productos
+                            🛒 @T("MENU_MANAGE_PRODUCTS", "Gestionar productos")
                         </NavLink>
                     }
                     @if (HasPermission(PermissionsType.GESTIONAR_IDIOMA))
                     {
                         <NavLink class="nav-link submenu-item" href="gestionar-idiomas">
-                            🌍 Gestionar idiomas
+                            🌍 @T("MENU_MANAGE_LANGUAGES", "Gestionar idiomas")
                         </NavLink>
                     }
                     @if (HasPermission(PermissionsType.GESTIONAR_BACKUP))
                     {
                         <NavLink class="nav-link submenu-item" href="gestionar-backup">
-                            💾 Gestionar Backup
+                            💾 @T("MENU_MANAGE_BACKUP", "Gestionar Backup")
                         </NavLink>
                     }
                     @if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
                     {
                         <NavLink class="nav-link submenu-item" href="serializar">
-                            🔄 Importar/Exportar JSON/XML
+                            🔄 @T("MENU_IMPORT_EXPORT", "Importar/Exportar JSON/XML")
                         </NavLink>
                     }
                 </div>
@@ -143,38 +144,81 @@
         }
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="#" @onclick="ConfirmLogout">
-                🚪 Cerrar sesión
+            <NavLink class="nav-link" href="#" @onclick="Logout">
+                🚪 @T("MENU_LOGOUT", "Cerrar sesión")
             </NavLink>
-            @if (showLogoutModal)
+            @* Modal de confirmación de logout - COMENTADO (cierre directo) *@
+            @*@if (showLogoutModal)
             {
-                <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-                    <div class="modal-dialog">
+                <div class="logout-modal-backdrop" @onclick="CancelarLogout"></div>
+                <div class="logout-modal">
+                    <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title">¿Confirmar cierre de sesión?</h5>
+                                <h5 class="modal-title">@T("LOGOUT_CONFIRM_TITLE", "¿Confirmar cierre de sesión?")</h5>
                             </div>
                             <div class="modal-body">
-                                <p>¿Estás seguro de que querés cerrar sesión?</p>
+                                <p>@T("LOGOUT_CONFIRM_MESSAGE", "¿Estás seguro de que querés cerrar sesión?")</p>
                             </div>
                             <div class="modal-footer">
-                                <button class="btn btn-secondary" @onclick="CancelarLogout">Cancelar</button>
-                                <button class="btn btn-danger" @onclick="Logout">Cerrar sesión</button>
+                                <button class="btn btn-secondary" @onclick="CancelarLogout">@T("BTN_CANCEL", "Cancelar")</button>
+                                <button class="btn btn-danger" @onclick="Logout">@T("BTN_LOGOUT", "Cerrar sesión")</button>
                             </div>
                         </div>
                     </div>
                 </div>
-            }
+            }*@
         </div>
     </nav>
 </div>
+
+@* Estilos del modal de logout - COMENTADO (cierre directo) *@
+@*<style>
+    /* Modal de logout con z-index máximo para estar encima de todo */
+    .logout-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 99999;
+        animation: fadeIn 0.15s ease-in;
+    }
+
+    .logout-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100000;
+        animation: fadeIn 0.15s ease-in;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+</style>*@
 
 @code {
     [Inject] private NavigationManager NavigationManager { get; set; }
     [Inject] private ILogger<NavMenu> Logger { get; set; }
 
     private bool[] menuStates = new bool[7];
-    private bool showLogoutModal = false;
+
+    // Variables y funciones del modal de logout - COMENTADO (cierre directo)
+    // private bool showLogoutModal = false;
+    // private void ConfirmLogout() => showLogoutModal = true;
+    // private void CancelarLogout() => showLogoutModal = false;
 
     private void ToggleMenu(int index)
     {
@@ -183,9 +227,6 @@
             menuStates[i] = i == index ? !menuStates[i] : false;
         }
     }
-
-    private void ConfirmLogout() => showLogoutModal = true;
-    private void CancelarLogout() => showLogoutModal = false;
 
     private void Logout()
     {

@@ -3,24 +3,26 @@
 @using BE.Enums
 @using BLL
 @using Infrastructure.Session
+@using WebUI.Components.Shared
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 @inject IPointBLL PointBLL
 @inject SingletonSession SingletonSession
+@inherits LanguageAwareComponentBase
 
 <RoleGuard RequiredPermissions="@(new[] { PermissionsType.CONSULTAR_PUNTOS })">
-    <h3>Historial de puntos</h3>
+    <h3>@T("VIEWPOINTS_TITLE", "Historial de puntos")</h3>
 
-    <p><strong>Puntos:</strong> @totalPuntos</p>
+    <p><strong>@T("VIEWPOINTS_TOTAL_POINTS", "Puntos:")</strong> @totalPuntos</p>
 
     <table class="table">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Usuario</th>
-                <th>Producto</th>
-                <th>Puntos</th>
-                <th>Fecha de transacción</th>
+                <th>@T("VIEWPOINTS_COL_ID", "ID")</th>
+                <th>@T("VIEWPOINTS_COL_USER", "Usuario")</th>
+                <th>@T("VIEWPOINTS_COL_PRODUCT", "Producto")</th>
+                <th>@T("VIEWPOINTS_COL_POINTS", "Puntos")</th>
+                <th>@T("VIEWPOINTS_COL_DATE", "Fecha de transacción")</th>
             </tr>
         </thead>
         <tbody>
@@ -40,7 +42,7 @@
         </tbody>
     </table>
 
-    <button class="btn btn-success" @onclick="Exportar">Exportar</button>
+    <button class="btn btn-success" @onclick="Exportar">@T("VIEWPOINTS_BTN_EXPORT", "Exportar")</button>
 
 </RoleGuard>
 
@@ -50,6 +52,8 @@
 
     protected override void OnInitialized()
     {
+        base.OnInitialized(); // IMPORTANTE: Llama al método base para suscribirse a cambios de idioma
+
         if (SingletonSession.Instancia?.User != null && SingletonSession.Instancia.IsInRole(PermissionsType.CONSULTAR_PUNTOS))
         {
             var userId = SingletonSession.Instancia.User.Id;
@@ -63,7 +67,7 @@
     {
          if (transactions == null || !transactions.Any())
         {
-            await JSRuntime.InvokeVoidAsync("alert", "No hay transacciones para exportar.");
+            await JSRuntime.InvokeVoidAsync("alert", T("VIEWPOINTS_NO_TRANSACTIONS", "No hay transacciones para exportar."));
             return;
         }
 
