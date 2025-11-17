@@ -300,6 +300,22 @@ else
 
         return lista;
     }
+    private async Task Eliminar(int id, string tabla)
+    {
+        try
+        {
+            CheckDigitBLL.DeleteRecord(tabla, id);
+
+            await JS.InvokeVoidAsync("alert", $"Registro {id} eliminado correctamente.");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Error al eliminar: {ex.Message}");
+        }
+
+        CargarInconsistencias();
+    }
+
 
     private async Task Recalcular()
     {

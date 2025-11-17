@@ -15,5 +15,7 @@ namespace Infrastructure.Interfaces.BLL
         bool VerifyVerticalDigit(string tableName);
         IDictionary<string, string> GetVerticalDigits();
         string GetInconsistentIds(string tableName);
+        void DeleteRecord(string tableName, int id);
+        void ModifyRecord(string tableName, int id);
     }
 }
