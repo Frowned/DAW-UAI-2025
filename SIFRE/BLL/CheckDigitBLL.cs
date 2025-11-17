@@ -13,6 +13,11 @@ namespace BLL
             _checkDigitDAL = checkDigitDAL;
         }
 
+        public void DeleteRecord(string tableName, int id)
+        {
+            _checkDigitDAL.DeleteRecord(tableName, id);
+        }
+
         public string GetIdByTable(string tableName)
         {
             switch (tableName)
@@ -34,6 +39,12 @@ namespace BLL
         public IDictionary<string, string> GetVerticalDigits()
         {
             return _checkDigitDAL.GetVerticalDigits();
+        }
+
+        public void ModifyRecord(string tableName, int id)
+        {
+            _checkDigitDAL.ModifyRecord(tableName, id);
+
         }
 
         public void RecalculateTable(string tableName, string keyField)

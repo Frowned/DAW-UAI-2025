@@ -178,5 +178,33 @@ namespace DAL
             else
                 return string.Empty;
         }
+
+        public void DeleteRecord(string tableName, int id)
+        {
+            string sql = $"DELETE FROM {tableName} WHERE Id = @Id";
+
+            helper.ExecuteNonQuery(
+                sql,
+                CommandType.Text,
+                new SqlParameter[]
+                {
+            new SqlParameter("@Id", id)
+                }
+            );
+        }
+
+        public void ModifyRecord(string tableName, int id)
+        {
+            string sql = $"UPDATE {tableName} SET ModifiedAt = GETDATE() WHERE Id = @Id";
+
+            helper.ExecuteNonQuery(
+                sql,
+                CommandType.Text,
+                new SqlParameter[]
+                {
+            new SqlParameter("@Id", id)
+                }
+            );
+        }
     }
 }
