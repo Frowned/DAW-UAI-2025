@@ -17,5 +17,6 @@ namespace Infrastructure.Interfaces.BLL
         string GetInconsistentIds(string tableName);
         void DeleteRecord(string tableName, int id);
         void ModifyRecord(string tableName, int id);
+        string DetectMissingRecords(string tableName);
     }
 }

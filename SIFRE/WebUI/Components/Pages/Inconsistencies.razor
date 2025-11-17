@@ -128,7 +128,7 @@
     Inconsistencias de base de datos:
 </h5>
 
-@if (Inconsistencias.Any())
+@if (Inconsistencias.Any() || EliminacionesDetectadas.Any())
 {
     <ul class="inconsist-list">
         @foreach (var inconsistencia in Inconsistencias)
@@ -137,6 +137,14 @@
                 <span style="font-size:1.1em;">⚠️</span>
                 <b>[<span style="color:#148354">@inconsistencia.TableName</span>]</b>
                 RegistroId: <b>@inconsistencia.RecordId</b>
+            </li>
+        }
+        @foreach (var eliminacion in EliminacionesDetectadas)
+        {
+            <li>
+                <span style="font-size:1.1em;">🚨</span>
+                <b>[<span style="color:#dc3545">@eliminacion.TableName</span>]</b>
+                @eliminacion.Message
             </li>
         }
     </ul>
@@ -192,6 +200,7 @@ else
 
 @code {
     private List<(string TableName, int RecordId)> Inconsistencias = new();
+    private List<(string TableName, string Message)> EliminacionesDetectadas = new();
 
     private IBrowserFile ArchivoSeleccionado;
     private string MensajeRestore;
@@ -267,15 +276,29 @@ else
     private void CargarInconsistencias()
     {
         Inconsistencias.Clear();
+        EliminacionesDetectadas.Clear();
 
         foreach (var table in TablasMonitoreadas)
         {
+            // Detectar inconsistencias de DVH (registros modificados)
             var result = CheckDigitBLL.GetInconsistentIds(table);
 
             if (!string.IsNullOrWhiteSpace(result))
             {
                 var inconsistencias = ParseInconsistencias(result, table);
                 Inconsistencias.AddRange(inconsistencias);
+            }
+
+            // Detectar eliminaciones manuales (DVV no coincide)
+            var missingResult = CheckDigitBLL.DetectMissingRecords(table);
+
+            if (!string.IsNullOrWhiteSpace(missingResult))
+            {
+                var eliminacion = ParseEliminacion(missingResult);
+                if (eliminacion.HasValue)
+                {
+                    EliminacionesDetectadas.Add(eliminacion.Value);
+                }
             }
         }
     }
@@ -299,6 +322,21 @@ else
         }
 
         return lista;
+    }
+
+    private (string TableName, string Message)? ParseEliminacion(string raw)
+    {
+        // Formato: "MissingRecords|Se ha eliminado uno o más registros de la tabla Products|Products"
+        var partes = raw.Split('|', StringSplitOptions.RemoveEmptyEntries);
+
+        if (partes.Length >= 3 && partes[0] == "MissingRecords")
+        {
+            string message = partes[1].Trim();
+            string tableName = partes[2].Trim();
+            return (tableName, message);
+        }
+
+        return null;
     }
     private async Task Eliminar(int id, string tabla)
     {

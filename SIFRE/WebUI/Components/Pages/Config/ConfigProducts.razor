@@ -5,6 +5,7 @@
 @inject IProductBLL ProductBLL
 @inject ILanguageBLL LanguageBLL
 @inject ILogBLL LogBLL
+@inject ICheckDigitBLL CheckDigitBLL
 @using Infrastructure.Mappers
 @using Infrastructure.Session
 @rendermode InteractiveServer
@@ -152,6 +153,21 @@
             IsBlocked = false
         });
 
+        // Regenerar CheckDigitVertical
+        try
+        {
+            CheckDigitBLL.RecalculateTable("Products", "Id");
+            CheckDigitBLL.RecalculateVerticalDigit("Products");
+        }
+        catch (Exception ex)
+        {
+            AlertMessage = $"Producto agregado pero error al actualizar integridad: {ex.Message}";
+            AlertCss = "alert-warning";
+            ClearForm();
+            LoadProducts();
+            return;
+        }
+
         ClearForm();
         LoadProducts();
         AlertMessage = "Se dio de alta el producto.";
@@ -191,6 +207,21 @@
             StartDate = SelectedProduct.StartDate ?? DateTime.Now,
             IsBlocked = true
         });
+
+        // Regenerar CheckDigitVertical
+        try
+        {
+            CheckDigitBLL.RecalculateTable("Products", "Id");
+            CheckDigitBLL.RecalculateVerticalDigit("Products");
+        }
+        catch (Exception ex)
+        {
+            AlertMessage = $"Producto deshabilitado pero error al actualizar integridad: {ex.Message}";
+            AlertCss = "alert-warning";
+            SelectedProduct = null;
+            LoadProducts();
+            return;
+        }
 
         SelectedProduct = null;
         LoadProducts();

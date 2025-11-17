@@ -87,10 +87,17 @@ namespace DAL
 
             string dvv = GetSHA256(sb.ToString());
 
+            // Primero eliminar el registro existente si existe
+            string delete = "DELETE FROM IntegrityControl WHERE TableName = @table";
+            helper.ExecuteNonQuery(delete, CommandType.Text, new SqlParameter[] {
+                new SqlParameter("@table", SqlDbType.VarChar, 100) { Value = tableName }
+            });
+
+            // Luego insertar el nuevo registro
             string insert = "INSERT INTO IntegrityControl (TableName, CheckDigitVertical, FechaCalculo) VALUES (@table, @dvv, GETDATE())";
             int affected = helper.ExecuteNonQuery(insert, CommandType.Text, new SqlParameter[] {
-                new SqlParameter("@table", tableName),
-                new SqlParameter("@dvv", dvv)
+                new SqlParameter("@table", SqlDbType.VarChar, 100) { Value = tableName },
+                new SqlParameter("@dvv", SqlDbType.VarChar, 64) { Value = dvv }
             });
 
             if (affected <= 0)
@@ -110,8 +117,8 @@ namespace DAL
             string dvvCalculated = GetSHA256(sb.ToString());
 
             string select = "SELECT CheckDigitVertical FROM IntegrityControl WHERE TableName = @table";
-            object dvvStored = helper.ExecuteScalar(select, CommandType.Text, new SqlParameter[] {
-                new SqlParameter("@table", tableName)
+            object dvvStored = helper.ExecuteScalar2(select, CommandType.Text, new SqlParameter[] {
+                new SqlParameter("@table", SqlDbType.VarChar, 100) { Value = tableName }
             });
 
             if (dvvStored == null || dvvStored == DBNull.Value)
@@ -205,6 +212,37 @@ namespace DAL
             new SqlParameter("@Id", id)
                 }
             );
+        }
+
+        public string DetectMissingRecords(string tableName)
+        {
+            // Obtener el DVV almacenado
+            string select = "SELECT CheckDigitVertical FROM IntegrityControl WHERE TableName = @table";
+            object dvvStored = helper.ExecuteScalar2(select, CommandType.Text, new SqlParameter[] {
+                new SqlParameter("@table", SqlDbType.VarChar, 100) { Value = tableName }
+            });
+
+            if (dvvStored == null || dvvStored == DBNull.Value)
+                return string.Empty; // No hay DVV almacenado, no se puede detectar eliminación
+
+            // Calcular el DVV actual
+            string query = $"SELECT CheckDigitHorizontal FROM {tableName}";
+            DataSet ds = helper.ExecuteDataSet(query, CommandType.Text);
+
+            var sb = new StringBuilder();
+            foreach (DataRow row in ds.Tables[0].Rows)
+                if (row["CheckDigitHorizontal"] != DBNull.Value)
+                    sb.Append(row["CheckDigitHorizontal"].ToString());
+
+            string dvvCalculated = GetSHA256(sb.ToString());
+
+            // Si no coinciden, significa que se eliminaron registros manualmente
+            if (dvvCalculated != dvvStored.ToString())
+            {
+                return $"MissingRecords|Se ha eliminado uno o más registros de la tabla {tableName}|{tableName}";
+            }
+
+            return string.Empty;
         }
     }
 }

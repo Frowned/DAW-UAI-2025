@@ -1414,6 +1414,23 @@ VALUES
     -- Plazo para revisar nominaciones
     ('ReviewDeadlineDays', '7', 'Tiempo máximo en días para revisar una nominación', '2EB2CE71-C0DB-43F3-A6FB-D23DABD608DF');
 GO
+
+/****** Object:  Table [dbo].[IntegrityControl]    Script Date: 17/11/2024 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[IntegrityControl](
+	[TableName] [VARCHAR](100) NOT NULL,
+	[CheckDigitVertical] [VARCHAR](64) NOT NULL,
+	[FechaCalculo] [DATETIME] NOT NULL DEFAULT GETDATE(),
+PRIMARY KEY CLUSTERED
+(
+	[TableName] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
 USE [master]
 GO
 ALTER DATABASE [DB_SIFRE] SET  READ_WRITE 

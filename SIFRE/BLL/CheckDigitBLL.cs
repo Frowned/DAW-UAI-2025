@@ -74,5 +74,10 @@ namespace BLL
         {
             return _checkDigitDAL.VerifyVerticalDigit(tableName);
         }
+
+        public string DetectMissingRecords(string tableName)
+        {
+            return _checkDigitDAL.DetectMissingRecords(tableName);
+        }
     }
 }

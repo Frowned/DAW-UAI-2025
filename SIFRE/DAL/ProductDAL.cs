@@ -45,6 +45,7 @@ namespace DAL
                 string idMax = result.ToString()!;
                 checkDigitDAL.AddCheckDigit("Products", "Id", idMax);
                 checkDigitDAL.RecalculateVerticalDigit("Products");
+                checkDigitDAL.RecalculateVerticalDigit("Transactions");
 
                 return int.Parse(idMax);
             }
