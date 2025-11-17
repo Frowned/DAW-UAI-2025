@@ -112,9 +112,12 @@
                     </span>
                 </button>
                 <div class="nav-submenu @(menuStates[3] ? "show" : "")">
-                    @*<NavLink class="nav-link submenu-item" href="gestionar-perfiles">
-                        👥 Gestionar perfiles
-                    </NavLink>*@
+                    @if (HasPermission(PermissionsType.GESTIONAR_PERFIL))
+                    {
+                        <NavLink class="nav-link submenu-item" href="gestionar-perfiles">
+                            👥 @T("MENU_MANAGE_PROFILES", "Gestionar perfiles")
+                        </NavLink>
+                    }
                     @if (HasPermission(PermissionsType.GESTIONAR_PRODUCTOS))
                     {
                         <NavLink class="nav-link submenu-item" href="gestionar-productos">

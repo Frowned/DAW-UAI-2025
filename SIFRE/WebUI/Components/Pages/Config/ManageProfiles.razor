@@ -1,0 +1,662 @@
+@page "/gestionar-perfiles"
+@using BE.DTO
+@using BE.Entities
+@using BE.Enums
+@inject IRoleBLL RoleBLL
+@inject ILogBLL LogBLL
+@inject IUserBLL UserBLL
+@inject ILanguageBLL LanguageBLL
+@using Infrastructure.Helpers
+@using Infrastructure.Mappers
+@using Infrastructure.Session
+@rendermode InteractiveServer
+@using WebUI.Components
+
+<RoleGuard RequiredPermissions="@(new[] { PermissionsType.GESTIONAR_PERFIL })">
+
+    <h3 class="text-primary fw-bold">👥 Gestión de Perfiles</h3>
+
+    @if (!string.IsNullOrEmpty(AlertMessage))
+    {
+        <div class="alert @AlertCss alert-dismissible fade show" role="alert">
+            @AlertMessage
+            <button type="button" class="btn-close" @onclick="() => AlertMessage = null"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Sección de Permisos -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Permisos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del permiso:</label>
+                            <input class="form-control" @bind="PermissionName" placeholder="Ej: Gestionar Usuarios" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de permiso:</label>
+                            <select class="form-select" @bind="SelectedPermissionType">
+                                @foreach (var permType in Enum.GetValues<PermissionsType>())
+                                {
+                                    <option value="@permType">@permType.ToString()</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button class="btn btn-primary me-2" @onclick="SavePermission">
+                                ➕ Guardar Permiso
+                            </button>
+                            <button class="btn btn-danger" @onclick="DeletePermission" disabled="@(SelectedPermission == null)">
+                                🗑️ Borrar Permiso
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var perm in Permissions)
+                                {
+                                    <tr class="@(SelectedPermission?.Id == perm.Id ? "table-active" : "")"
+                                        @onclick="() => SelectPermission(perm)"
+                                        style="cursor: pointer;">
+                                        <td>@perm.Id</td>
+                                        <td>@perm.Name</td>
+                                        <td>@perm.Permission</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Roles -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Roles</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Nombre del rol:</label>
+                            <input class="form-control" @bind="RoleName" placeholder="Ej: Administrador" />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button class="btn btn-success w-100" @onclick="SaveRole">
+                                ➕ Guardar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button class="btn btn-danger" @onclick="DeleteRole" disabled="@(SelectedRole == null)">
+                                🗑️ Borrar Rol
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var role in Roles)
+                                {
+                                    <tr class="@(SelectedRole?.Id == role.Id ? "table-active" : "")"
+                                        style="cursor: pointer;">
+                                        <td @onclick="() => SelectRole(role)">@role.Id</td>
+                                        <td @onclick="() => SelectRole(role)">@role.Name</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" @onclick="() => ConfigureRole(role)">
+                                                ⚙️ Configurar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Configuración de Rol -->
+    @if (RoleToConfig != null)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Configurar Rol: @RoleToConfig.Name</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Agregar Permiso:</label>
+                                <select class="form-select" @bind="SelectedPermissionToAdd">
+                                    <option value="">Seleccione un permiso</option>
+                                    @foreach (var perm in Permissions)
+                                    {
+                                        <option value="@perm.Id">[@perm.Id] @perm.Name - @perm.Permission</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" @onclick="AddPermissionToRole">
+                                    ➕ Agregar
+                                </button>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Agregar Rol:</label>
+                                <select class="form-select" @bind="SelectedRoleToAdd">
+                                    <option value="">Seleccione un rol</option>
+                                    @foreach (var role in Roles.Where(r => r.Id != RoleToConfig.Id))
+                                    {
+                                        <option value="@role.Id">[@role.Id] @role.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-success w-100" @onclick="AddRoleToRole">
+                                    ➕ Agregar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <button class="btn btn-warning me-2" @onclick="SaveRoleConfiguration">
+                                    💾 Guardar Configuración
+                                </button>
+                                <button class="btn btn-secondary" @onclick="CancelConfiguration">
+                                    ❌ Cancelar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Árbol de Estructura del Rol -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-secondary text-white">
+                                        <h6 class="mb-0">Estructura del Rol</h6>
+                                    </div>
+                                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                        <div class="tree-view">
+                                            @RenderRoleTree(RoleToConfig)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Sección de Asignación de Roles a Usuarios -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">Asignar Rol a Usuario</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Usuario:</label>
+                            <select class="form-select" @bind="SelectedUserId">
+                                <option value="">Seleccione un usuario</option>
+                                @foreach (var user in Users)
+                                {
+                                    <option value="@user.Id">@user.FirstName @user.LastName (@user.Email)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Rol:</label>
+                            <select class="form-select" @bind="SelectedRoleIdToAssign">
+                                <option value="">Seleccione un rol</option>
+                                @foreach (var role in Roles)
+                                {
+                                    <option value="@role.Id">@role.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-warning w-100" @onclick="AssignRoleToUser">
+                                ✅ Asignar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</RoleGuard>
+
+<style>
+    .tree-view {
+        font-family: 'Courier New', monospace;
+        line-height: 1.8;
+    }
+
+    .tree-node {
+        padding-left: 20px;
+        border-left: 2px solid #ddd;
+        margin-left: 10px;
+    }
+
+    .tree-node-root {
+        font-weight: bold;
+        color: #0d6efd;
+        font-size: 1.1em;
+    }
+
+    .tree-node-item {
+        color: #6c757d;
+    }
+</style>
+
+@code {
+    private List<Permission> Permissions = new();
+    private List<Role> Roles = new();
+    private List<UserDTO> Users = new();
+
+    private Permission? SelectedPermission;
+    private Role? SelectedRole;
+    private Role? RoleToConfig;
+
+    private string? PermissionName;
+    private PermissionsType SelectedPermissionType = PermissionsType.VER_PRODUCTOS;
+
+    private string? RoleName;
+
+    private int SelectedPermissionToAdd = 0;
+    private int SelectedRoleToAdd = 0;
+
+    private Guid SelectedUserId = Guid.Empty;
+    private int SelectedRoleIdToAssign = 0;
+
+    private string? AlertMessage;
+    private string AlertCss = "alert-success";
+
+    protected override void OnInitialized()
+    {
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        Permissions = RoleBLL.GetPermissions().Cast<Permission>().ToList();
+        Roles = RoleBLL.GetRoles().Cast<Role>().ToList();
+        Users = UserBLL.GetAllUsers();
+    }
+
+    // ======== GESTIÓN DE PERMISOS ========
+
+    private void SelectPermission(Permission permission)
+    {
+        SelectedPermission = permission;
+        PermissionName = permission.Name;
+        SelectedPermissionType = permission.Permission ?? PermissionsType.VER_PRODUCTOS;
+    }
+
+    private void SavePermission()
+    {
+        if (string.IsNullOrWhiteSpace(PermissionName))
+        {
+            ShowAlert("El nombre del permiso no puede estar vacío", "alert-danger");
+            return;
+        }
+
+        Permission permission = new Permission()
+        {
+            Name = PermissionName,
+            Permission = SelectedPermissionType
+        };
+
+        RoleBLL.SaveComponent(permission, false);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se creó el permiso {PermissionName} de tipo {SelectedPermissionType}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageProfiles"
+        });
+
+        ShowAlert($"Permiso '{PermissionName}' guardado correctamente", "alert-success");
+        PermissionName = string.Empty;
+        LoadData();
+    }
+
+    private void DeletePermission()
+    {
+        if (SelectedPermission == null)
+        {
+            ShowAlert("Debe seleccionar un permiso", "alert-danger");
+            return;
+        }
+
+        var permName = SelectedPermission.Name;
+        RoleBLL.DeleteRole(SelectedPermission);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se eliminó el permiso {permName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageProfiles"
+        });
+
+        ShowAlert($"Permiso '{permName}' eliminado correctamente", "alert-warning");
+        SelectedPermission = null;
+        PermissionName = string.Empty;
+        LoadData();
+    }
+
+    // ======== GESTIÓN DE ROLES ========
+
+    private void SelectRole(Role role)
+    {
+        SelectedRole = role;
+        RoleName = role.Name;
+    }
+
+    private void SaveRole()
+    {
+        if (string.IsNullOrWhiteSpace(RoleName))
+        {
+            ShowAlert("El nombre del rol no puede estar vacío", "alert-danger");
+            return;
+        }
+
+        Role role = new Role()
+        {
+            Name = RoleName
+        };
+
+        RoleBLL.SaveComponent(role, true);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se creó el rol {RoleName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageProfiles"
+        });
+
+        ShowAlert($"Rol '{RoleName}' guardado correctamente", "alert-success");
+        RoleName = string.Empty;
+        LoadData();
+    }
+
+    private void DeleteRole()
+    {
+        if (SelectedRole == null)
+        {
+            ShowAlert("Debe seleccionar un rol", "alert-danger");
+            return;
+        }
+
+        bool isAssigned = RoleBLL.IsAssigned(SelectedRole);
+
+        if (isAssigned)
+        {
+            ShowAlert("No se puede eliminar un rol que tiene usuarios asignados", "alert-danger");
+            return;
+        }
+
+        var roleName = SelectedRole.Name;
+        RoleBLL.DeleteRole(SelectedRole);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se eliminó el rol {roleName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageProfiles"
+        });
+
+        ShowAlert($"Rol '{roleName}' eliminado correctamente", "alert-warning");
+        SelectedRole = null;
+        RoleName = string.Empty;
+        LoadData();
+    }
+
+    private void ConfigureRole(Role role)
+    {
+        RoleToConfig = role;
+        var roleComponentList = RoleBLL.GetAll($" = {role.Id} ");
+
+        RoleToConfig.Children.Clear();
+        foreach (var item in roleComponentList)
+        {
+            RoleToConfig.AddChild(item);
+        }
+    }
+
+    private void CancelConfiguration()
+    {
+        RoleToConfig = null;
+        SelectedPermissionToAdd = 0;
+        SelectedRoleToAdd = 0;
+    }
+
+    private void AddPermissionToRole()
+    {
+        if (RoleToConfig == null)
+        {
+            ShowAlert("Debe configurar un rol primero", "alert-danger");
+            return;
+        }
+
+        if (SelectedPermissionToAdd == 0)
+        {
+            ShowAlert("Debe seleccionar un permiso", "alert-danger");
+            return;
+        }
+
+        var permission = Permissions.FirstOrDefault(p => p.Id == SelectedPermissionToAdd);
+        if (permission == null)
+        {
+            ShowAlert("Permiso no encontrado", "alert-danger");
+            return;
+        }
+
+        var exists = RoleHelper.RoleExists(RoleToConfig, permission.Id);
+        if (exists)
+        {
+            ShowAlert("El permiso ya existe en este rol", "alert-danger");
+            return;
+        }
+
+        RoleToConfig.Children.Add(permission);
+        ShowAlert($"Permiso '{permission.Name}' agregado al rol", "alert-success");
+        SelectedPermissionToAdd = 0;
+    }
+
+    private void AddRoleToRole()
+    {
+        if (RoleToConfig == null)
+        {
+            ShowAlert("Debe configurar un rol primero", "alert-danger");
+            return;
+        }
+
+        if (SelectedRoleToAdd == 0)
+        {
+            ShowAlert("Debe seleccionar un rol", "alert-danger");
+            return;
+        }
+
+        var roleToAdd = Roles.FirstOrDefault(r => r.Id == SelectedRoleToAdd);
+        if (roleToAdd == null)
+        {
+            ShowAlert("Rol no encontrado", "alert-danger");
+            return;
+        }
+
+        var roleExists = RoleHelper.RoleExists(RoleToConfig, roleToAdd.Id);
+        if (roleExists)
+        {
+            ShowAlert("El rol ya existe en este rol", "alert-danger");
+            return;
+        }
+
+        RoleBLL.FillRoleComponent(roleToAdd);
+        RoleToConfig.Children.Add(roleToAdd);
+
+        // Verificar circularidad
+        roleExists = RoleHelper.RoleExists(roleToAdd, RoleToConfig.Id);
+        if (roleExists)
+        {
+            RoleToConfig.Children.Remove(roleToAdd);
+            ShowAlert("No se puede agregar el rol porque crearía una referencia circular", "alert-danger");
+            return;
+        }
+
+        ShowAlert($"Rol '{roleToAdd.Name}' agregado al rol", "alert-success");
+        SelectedRoleToAdd = 0;
+    }
+
+    private void SaveRoleConfiguration()
+    {
+        if (RoleToConfig == null)
+        {
+            ShowAlert("Debe configurar un rol primero", "alert-danger");
+            return;
+        }
+
+        try
+        {
+            RoleBLL.SaveComponent(RoleToConfig);
+
+            LogBLL.Save(new Log
+            {
+                Message = $"Se actualizó la configuración del rol {RoleToConfig.Name}",
+                CreatedAt = DateTime.Now,
+                CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+                Type = LogType.Info,
+                Module = "ManageProfiles"
+            });
+
+            ShowAlert($"Configuración del rol '{RoleToConfig.Name}' guardada correctamente", "alert-success");
+            RoleToConfig = null;
+            LoadData();
+        }
+        catch (Exception ex)
+        {
+            ShowAlert($"Error al guardar la configuración: {ex.Message}", "alert-danger");
+        }
+    }
+
+    // ======== GESTIÓN DE ASIGNACIÓN DE ROLES A USUARIOS ========
+
+    private void AssignRoleToUser()
+    {
+        if (SelectedUserId == Guid.Empty)
+        {
+            ShowAlert("Debe seleccionar un usuario", "alert-danger");
+            return;
+        }
+
+        if (SelectedRoleIdToAssign == 0)
+        {
+            ShowAlert("Debe seleccionar un rol", "alert-danger");
+            return;
+        }
+
+        var user = Users.FirstOrDefault(u => u.Id == SelectedUserId);
+        var role = Roles.FirstOrDefault(r => r.Id == SelectedRoleIdToAssign);
+
+        if (user == null || role == null)
+        {
+            ShowAlert("Usuario o rol no encontrado", "alert-danger");
+            return;
+        }
+
+        UserBLL.AssignRole(role, user);
+
+        LogBLL.Save(new Log
+        {
+            Message = $"Se asignó el rol {role.Name} al usuario {user.FirstName} {user.LastName}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = UsersMapper.DtoToUser(SingletonSession.Instancia.User),
+            Type = LogType.Info,
+            Module = "ManageProfiles"
+        });
+
+        ShowAlert($"Rol '{role.Name}' asignado a '{user.FirstName} {user.LastName}' correctamente", "alert-success");
+        SelectedUserId = Guid.Empty;
+        SelectedRoleIdToAssign = 0;
+    }
+
+    // ======== RENDERIZADO DEL ÁRBOL ========
+
+    private RenderFragment RenderRoleTree(RoleComponent component)
+    {
+        return builder =>
+        {
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", component is Role ? "tree-node-root" : "tree-node-item");
+
+            builder.OpenElement(2, "div");
+            builder.AddContent(3, $"📁 [{component.Id}] {component.Name}");
+            builder.CloseElement();
+
+            if (component.Children != null && component.Children.Any())
+            {
+                builder.OpenElement(4, "div");
+                builder.AddAttribute(5, "class", "tree-node");
+
+                foreach (var child in component.Children)
+                {
+                    builder.AddContent(6, RenderRoleTree(child));
+                }
+
+                builder.CloseElement();
+            }
+
+            builder.CloseElement();
+        };
+    }
+
+    // ======== UTILIDADES ========
+
+    private void ShowAlert(string message, string cssClass)
+    {
+        AlertMessage = message;
+        AlertCss = cssClass;
+    }
+}
